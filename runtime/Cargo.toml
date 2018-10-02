@@ -1,0 +1,25 @@
+[package]
+name = "lang-runtime"
+version = "0.1.0"
+authors = ["Nathan Faucett <nathanfaucett@gmail.com>"]
+
+keywords = ["lang", "runtime"]
+categories = []
+
+description = "lang runtime"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://gitlab.com/nathanfaucett/rs-lang.git"
+homepage = "https://gitlab.com/nathanfaucett/rs-lang"
+
+[lib]
+name = "lang_runtime"
+path = "src/lib.rs"
+
+[dependencies]
+num-traits = "0.2"
+serde = "1.0"
+serde_derive = "1.0"
+lang-gc = { version = "0.1", path = "../gc" }
+
+[dev-dependencies]

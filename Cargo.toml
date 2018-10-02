@@ -1,0 +1,29 @@
+[package]
+name = "lang"
+version = "0.1.0"
+authors = ["Nathan Faucett <nathanfaucett@gmail.com>"]
+
+keywords = ["lang"]
+categories = []
+
+description = "lang"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://gitlab.com/nathanfaucett/rs-lang.git"
+homepage = "https://gitlab.com/nathanfaucett/rs-lang"
+
+[lib]
+name = "lang"
+path = "src/lib.rs"
+
+[dependencies]
+lang-gc = { version = "0.1", path = "./gc" }
+lang-runtime = { version = "0.1", path = "./runtime" }
+
+[dev-dependencies]
+
+[workspace]
+members = [
+  "gc",
+  "runtime"
+]
