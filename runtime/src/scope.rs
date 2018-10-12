@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 
 use gc::Gc;
@@ -50,6 +51,15 @@ impl Scope {
             return parent.get_mut(ident);
         }
         None
+    }
+
+    #[inline]
+    pub unsafe fn get_type<T>(&self, ident: &str) -> Option<Gc<Object<T>>>
+    where
+        T: 'static + Hash + Debug + PartialEq,
+    {
+        self.get(ident)
+            .map(|value| value.clone().into_object_unchecked())
     }
 
     #[inline]

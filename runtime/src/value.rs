@@ -7,9 +7,9 @@ use gc::Gc;
 use super::{Kind, Object};
 
 pub trait Value: Any {
-    fn kind(&self) -> &Object<Kind>;
+    fn kind(&self) -> &Gc<Object<Kind>>;
     fn debug(&self, f: &mut fmt::Formatter) -> fmt::Result;
-    fn eq(&self, other: &Value) -> bool;
+    fn equal(&self, other: &Value) -> bool;
     fn hash(&self, hasher: &mut Hasher);
 }
 
@@ -46,11 +46,11 @@ impl Value {
     }
 
     #[inline]
-    pub unsafe fn downcast_unchecked<T: Value>(mut self: Box<Self>) -> Box<T> {
-        Box::from_raw((&mut *self) as *const Value as *mut T)
+    pub unsafe fn downcast_unchecked<T: Value>(mut self: Gc<Self>) -> Gc<T> {
+        Gc::from_raw((&mut *self) as *const Value as *mut T)
     }
     #[inline]
-    pub fn downcast<T: Value>(self: Box<Self>) -> Result<Box<T>, Box<Self>> {
+    pub fn downcast<T: Value>(self: Gc<Self>) -> Result<Gc<T>, Gc<Self>> {
         if self.is::<T>() {
             unsafe { Ok(self.downcast_unchecked()) }
         } else {
@@ -60,19 +60,26 @@ impl Value {
 }
 
 impl Value {
-    #[inline]
-    pub unsafe fn into_object_unchecked<T>(self: Gc<Value>) -> Gc<Object<T>>
+    #[inline(always)]
+    pub unsafe fn into_object_unchecked<T>(self: Gc<Self>) -> Gc<Object<T>>
     where
         T: 'static + PartialEq + Hash + fmt::Debug,
     {
-        Gc::from_raw(self.as_ptr() as *const Value as *mut Object<T>)
+        self.downcast_unchecked::<Object<T>>()
+    }
+    #[inline(always)]
+    pub fn into_object<T>(self: Gc<Self>) -> Result<Gc<Object<T>>, Gc<Self>>
+    where
+        T: 'static + PartialEq + Hash + fmt::Debug,
+    {
+        self.downcast::<Object<T>>()
     }
 }
 
 impl PartialEq for Value {
     #[inline(always)]
     fn eq(&self, other: &Self) -> bool {
-        self.eq(other)
+        self.equal(other)
     }
 }
 
@@ -92,50 +99,19 @@ impl fmt::Debug for Value {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
+// https://github.com/Rufflewind/any_key/blob/master/src/lib.rs#L40
+pub struct HasherMut<H: ?Sized + Hasher>(pub H);
 
-    use std::ptr;
-
-    use gc::Gc;
-
-    #[test]
-    fn test_is() {
-        let kind = unsafe { Kind::new_type_kind() };
-        let obj = unsafe { Gc::new(Object::new(kind, 0_usize)) };
-        let value = obj.as_value();
-        assert!(value.is::<Object<usize>>());
+impl<H> Hasher for HasherMut<H>
+where
+    H: ?Sized + Hasher,
+{
+    #[inline(always)]
+    fn finish(&self) -> u64 {
+        self.0.finish()
     }
-
-    #[test]
-    fn test_downcast() {
-        let kind = unsafe { Kind::new_type_kind() };
-        let obj = unsafe { Gc::new(Object::new(kind, 0_usize)) };
-        let value = obj.as_value();
-        assert_eq!(
-            unsafe { value.downcast_ref_unchecked::<Object<usize>>() },
-            obj.as_ref()
-        );
-    }
-
-    #[test]
-    fn test_as_value() {
-        let kind = unsafe { Kind::new_type_kind() };
-        let obj = unsafe { Gc::new(Object::new(kind.clone(), 0_usize)) };
-        let value = obj.as_value();
-        assert!(ptr::eq(kind.as_ptr(), value.kind()));
-    }
-
-    #[test]
-    fn test_eq() {
-        let kind = unsafe { Kind::new_type_kind() };
-        let obj_a = unsafe { Gc::new(Object::new(kind.clone(), 0_usize)) };
-        let obj_b = unsafe { Gc::new(Object::new(kind.clone(), 1_usize)) };
-        let value_a = obj_a.as_value();
-        let value_b = obj_b.as_value();
-        assert_ne!(value_a, value_b);
-        assert_eq!(value_a, value_a);
-        assert_eq!(value_b, value_b);
+    #[inline(always)]
+    fn write(&mut self, bytes: &[u8]) {
+        self.0.write(bytes)
     }
 }

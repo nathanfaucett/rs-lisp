@@ -32,9 +32,16 @@ impl<T> Gc<T> {
     }
 
     #[inline(always)]
-    pub unsafe fn set_if_null(&mut self, v: T) -> &mut Self {
+    pub unsafe fn set_from_value(&mut self, v: T) -> &mut Self {
         assert!(self.ptr.is_null());
         self.ptr = Box::into_raw(Box::new(v));
+        self
+    }
+
+    #[inline(always)]
+    pub unsafe fn set_from_gc(&mut self, g: Gc<T>) -> &mut Self {
+        assert!(self.ptr.is_null());
+        self.ptr = g.as_ptr();
         self
     }
 }
@@ -44,10 +51,6 @@ where
     T: ?Sized,
 {
     #[inline(always)]
-    pub unsafe fn from_ptr(ptr: *mut T) -> Self {
-        Gc { ptr: ptr }
-    }
-    #[inline(always)]
     pub unsafe fn from_raw(ptr: *mut T) -> Self {
         Gc { ptr: ptr }
     }
@@ -56,6 +59,19 @@ where
         Gc {
             ptr: Box::into_raw(b),
         }
+    }
+    #[inline(always)]
+    pub unsafe fn from_gc(g: Gc<T>) -> Self {
+        Gc { ptr: g.as_ptr() }
+    }
+
+    #[inline(always)]
+    pub unsafe fn into_raw(self) -> *mut T {
+        self.ptr
+    }
+    #[inline(always)]
+    pub unsafe fn into_box(self) -> Box<T> {
+        Box::from_raw(self.ptr)
     }
 
     #[inline(always)]

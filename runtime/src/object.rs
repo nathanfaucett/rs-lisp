@@ -36,29 +36,6 @@ where
     pub fn value_mut(&mut self) -> &mut T {
         &mut self.value
     }
-
-    #[inline(always)]
-    pub fn kind(&self) -> &Object<Kind> {
-        self.kind.as_ref()
-    }
-    #[inline(always)]
-    pub fn kind_mut(&mut self) -> &mut Object<Kind> {
-        self.kind.as_mut()
-    }
-}
-
-impl<T> Object<T>
-where
-    T: 'static + PartialEq + Hash + Debug,
-{
-    #[inline(always)]
-    pub fn as_value(&self) -> &Value {
-        unsafe { &*(self as *const Value) }
-    }
-    #[inline(always)]
-    pub fn as_value_mut(&mut self) -> &mut Value {
-        unsafe { &mut *(self as *mut Value) }
-    }
 }
 
 impl<T> Deref for Object<T>
@@ -83,13 +60,23 @@ where
     }
 }
 
+impl<T> Object<T>
+where
+    T: 'static + PartialEq + Hash + Debug,
+{
+    #[inline(always)]
+    pub fn into_value(self: Gc<Self>) -> Gc<Value> {
+        unsafe { Gc::from_raw(self.as_ptr() as *mut Value) }
+    }
+}
+
 impl<T> Value for Object<T>
 where
     T: 'static + PartialEq + Hash + Debug,
 {
     #[inline(always)]
-    fn kind(&self) -> &Object<Kind> {
-        self.kind.as_ref()
+    fn kind(&self) -> &Gc<Object<Kind>> {
+        &self.kind
     }
 
     #[inline(always)]
@@ -98,7 +85,7 @@ where
     }
 
     #[inline(always)]
-    fn eq(&self, other: &Value) -> bool {
+    fn equal(&self, other: &Value) -> bool {
         match other.downcast_ref::<Object<T>>() {
             Some(other) => (self.kind() == other.kind() && self.value() == other.value()),
             None => false,
@@ -108,16 +95,6 @@ where
     #[inline(always)]
     fn hash(&self, hasher: &mut Hasher) {
         Hash::hash(self, &mut HasherMut(hasher));
-    }
-}
-
-impl<T> Object<T>
-where
-    T: 'static + PartialEq + Hash + Debug,
-{
-    #[inline(always)]
-    pub fn into_value(self: Gc<Self>) -> Gc<Value> {
-        unsafe { Gc::from_raw(self.as_ptr() as *mut Value) }
     }
 }
 
