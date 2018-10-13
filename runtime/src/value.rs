@@ -98,20 +98,3 @@ impl fmt::Debug for Value {
         self.debug(f)
     }
 }
-
-// https://github.com/Rufflewind/any_key/blob/master/src/lib.rs#L40
-pub struct HasherMut<H: ?Sized + Hasher>(pub H);
-
-impl<H> Hasher for HasherMut<H>
-where
-    H: ?Sized + Hasher,
-{
-    #[inline(always)]
-    fn finish(&self) -> u64 {
-        self.0.finish()
-    }
-    #[inline(always)]
-    fn write(&mut self, bytes: &[u8]) {
-        self.0.write(bytes)
-    }
-}

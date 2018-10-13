@@ -10,6 +10,9 @@ extern crate serde_derive;
 
 extern crate lang_gc as gc;
 
+#[macro_use]
+mod lisp_macro;
+
 mod context;
 mod eval;
 mod function;

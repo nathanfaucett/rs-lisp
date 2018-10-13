@@ -54,7 +54,7 @@ impl Context {
         let scope_kind = Gc::new(Kind::new_kind::<Scope>(type_kind.clone(), "Scope"));
 
         self.scope
-            .set_from_value(Object::new(scope_kind.clone(), Scope::new_root()));
+            .set_from_value(Object::new(scope_kind.clone(), Scope::new(None)));
 
         self.scope.set("Type", type_kind.into_value());
         self.scope.set("Scope", scope_kind.into_value());
@@ -64,7 +64,7 @@ impl Context {
 
     #[inline]
     unsafe fn init_nil(&mut self) -> &mut Self {
-        let type_kind = self.scope.get_type::<Kind>("Type").unwrap();
+        let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
         let nil_kind = Gc::new(Kind::new_kind::<()>(type_kind.clone(), "Nil"));
         let nil_value = Gc::new(Object::new(nil_kind.clone(), ()));
@@ -77,7 +77,7 @@ impl Context {
 
     #[inline]
     unsafe fn init_function(&mut self) -> &mut Self {
-        let type_kind = self.scope.get_type::<Kind>("Type").unwrap();
+        let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
         let function_kind = Kind::new_kind::<Function>(type_kind.clone(), "Function");
         let macro_kind = Kind::new_kind::<Function>(type_kind.clone(), "Macro");
@@ -91,7 +91,7 @@ impl Context {
 
     #[inline]
     unsafe fn init_boolean(&mut self) -> &mut Self {
-        let type_kind = self.scope.get_type::<Kind>("Type").unwrap();
+        let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
         let boolean_kind = Gc::new(Kind::new_kind::<bool>(type_kind, "Boolean"));
         let true_value = Gc::new(Object::new(boolean_kind.clone(), true));
@@ -106,7 +106,7 @@ impl Context {
 
     #[inline]
     unsafe fn init_character(&mut self) -> &mut Self {
-        let type_kind = self.scope.get_type::<Kind>("Type").unwrap();
+        let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
         let character_kind = Gc::new(Kind::new_kind::<char>(type_kind, "Character"));
         self.scope.set("Character", character_kind.into_value());
@@ -116,7 +116,7 @@ impl Context {
 
     #[inline]
     unsafe fn init_keyword(&mut self) -> &mut Self {
-        let type_kind = self.scope.get_type::<Kind>("Type").unwrap();
+        let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
         let keyword_kind = Gc::new(Kind::new_kind::<String>(type_kind, "Keyword"));
         self.scope.set("Keyword", keyword_kind.into_value());
@@ -126,7 +126,7 @@ impl Context {
 
     #[inline]
     unsafe fn init_string(&mut self) -> &mut Self {
-        let type_kind = self.scope.get_type::<Kind>("Type").unwrap();
+        let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
         let string_kind = Gc::new(Kind::new_kind::<String>(type_kind, "String"));
         self.scope.set("String", string_kind.into_value());
@@ -136,7 +136,7 @@ impl Context {
 
     #[inline]
     unsafe fn init_symbol(&mut self) -> &mut Self {
-        let type_kind = self.scope.get_type::<Kind>("Type").unwrap();
+        let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
         let symbol_kind = Gc::new(Kind::new_kind::<String>(type_kind, "Symbol"));
         self.scope.set("Symbol", symbol_kind.into_value());
@@ -146,7 +146,7 @@ impl Context {
 
     #[inline]
     unsafe fn init_numbers(&mut self) -> &mut Self {
-        let type_kind = self.scope.get_type::<Kind>("Type").unwrap();
+        let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
         // Unsigned
         let u8_kind = Gc::new(Kind::new_kind::<u8>(type_kind.clone(), "U8"));
@@ -192,7 +192,7 @@ impl Context {
 
     #[inline]
     unsafe fn init_list(&mut self) -> &mut Self {
-        let type_kind = self.scope.get_type::<Kind>("Type").unwrap();
+        let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
         let list_kind = Gc::new(Kind::new_kind::<List>(type_kind, "List"));
         self.scope.set("List", list_kind.into_value());
@@ -202,7 +202,7 @@ impl Context {
 
     #[inline]
     unsafe fn init_vector(&mut self) -> &mut Self {
-        let type_kind = self.scope.get_type::<Kind>("Type").unwrap();
+        let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
         let vector_kind = Gc::new(Kind::new_kind::<Vector>(type_kind, "Vector"));
         self.scope.set("Vector", vector_kind.into_value());
@@ -212,23 +212,11 @@ impl Context {
 
     #[inline]
     unsafe fn init_map(&mut self) -> &mut Self {
-        let type_kind = self.scope.get_type::<Kind>("Type").unwrap();
+        let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
         let map_kind = Gc::new(Kind::new_kind::<Map>(type_kind, "Map"));
         self.scope.set("Map", map_kind.into_value());
 
         self
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test() {
-        let context = Context::new();
-        println!("{:#?}", context);
-        assert!(false);
     }
 }

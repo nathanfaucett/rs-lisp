@@ -20,11 +20,6 @@ impl Hash for Scope {
 
 impl Scope {
     #[inline(always)]
-    pub fn new_root() -> Self {
-        Self::new(None)
-    }
-
-    #[inline(always)]
     pub fn new(parent: Option<Gc<Object<Scope>>>) -> Self {
         Scope {
             parent: parent,
@@ -54,7 +49,7 @@ impl Scope {
     }
 
     #[inline]
-    pub unsafe fn get_type<T>(&self, ident: &str) -> Option<Gc<Object<T>>>
+    pub unsafe fn get_with_type<T>(&self, ident: &str) -> Option<Gc<Object<T>>>
     where
         T: 'static + Hash + Debug + PartialEq,
     {
