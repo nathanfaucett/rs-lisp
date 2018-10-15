@@ -17,6 +17,7 @@ name = "lang_runtime"
 path = "src/lib.rs"
 
 [dependencies]
+fnv = "1.0"
 num-traits = "0.2"
 serde = "1.0"
 serde_derive = "1.0"

@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 
+use fnv::FnvHashMap;
 use gc::Gc;
 
 use super::{Object, Value};
@@ -9,7 +9,7 @@ use super::{Object, Value};
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Scope {
     parent: Option<Gc<Object<Scope>>>,
-    map: HashMap<String, Gc<Value>>,
+    map: FnvHashMap<String, Gc<Value>>,
 }
 
 impl Hash for Scope {
@@ -23,7 +23,7 @@ impl Scope {
     pub fn new(parent: Option<Gc<Object<Scope>>>) -> Self {
         Scope {
             parent: parent,
-            map: HashMap::new(),
+            map: FnvHashMap::default(),
         }
     }
 

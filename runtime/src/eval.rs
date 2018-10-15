@@ -2,7 +2,7 @@ use std::collections::LinkedList;
 
 use gc::Gc;
 
-use super::{Function, Kind, List, Object, Scope, Value};
+use super::{Context, Function, Kind, List, Object, Scope, SpecialForm, Value};
 
 #[derive(Debug)]
 pub enum State {
@@ -12,6 +12,7 @@ pub enum State {
     CallWithNewScope,
     Call,
     Return,
+    If,
 }
 
 #[derive(Debug)]
@@ -39,6 +40,114 @@ impl Stack {
 }
 
 #[inline]
+pub fn if_special_form(stack: &mut Stack) {
+    let mut list = stack
+        .value
+        .pop_front()
+        .expect("failed to get args for if")
+        .downcast::<Object<List>>()
+        .expect("failed downcast args as List for if");
+
+    stack
+        .value
+        .push_front(list.pop_front().expect("failed to get expr")); // expr
+    stack
+        .value
+        .push_front(list.pop_front().expect("failed to get if expr")); // if expr
+    if let Some(value) = list.pop_front() {
+        stack.value.push_front(value); // else expr
+    } else {
+        stack.value.push_front(
+            Context::new_nil(stack.scope.back().expect("failed to get scope")).into_value(),
+        ); // else expr
+    }
+
+    stack.state.push_front(State::If);
+    stack.state.push_front(State::Eval);
+}
+
+#[inline]
+pub fn def_special_form(stack: &mut Stack) {
+    let mut list = stack
+        .value
+        .pop_front()
+        .expect("failed to get args for def")
+        .downcast::<Object<List>>()
+        .expect("failed downcast args as List for def");
+
+    let key = list
+        .pop_front()
+        .expect("failed to get key for def")
+        .downcast::<Object<String>>()
+        .expect("variable name must be a Symbol");
+    let value = list.pop_front().expect("failed to get value for def");
+
+    stack
+        .scope
+        .front_mut()
+        .expect("failed to get scope")
+        .value_mut()
+        .set(key.value(), value);
+}
+
+#[inline]
+pub fn fn_special_form(stack: &mut Stack) {
+    let mut list = stack
+        .value
+        .pop_front()
+        .expect("failed to get args for fn")
+        .downcast::<Object<List>>()
+        .expect("failed downcast args as List for fn");
+
+    let (name, params) = {
+        let first = list.pop_front().expect("failed to get name/params for fn");
+
+        match first.downcast::<Object<String>>() {
+            Ok(name) => {
+                let params = stack
+                    .value
+                    .pop_front()
+                    .expect("failed to get params")
+                    .downcast::<Object<List>>()
+                    .expect("failed to downcast params as List");
+                (Some(name), params)
+            }
+            Err(first) => match first.downcast::<Object<List>>() {
+                Ok(params) => (None, params),
+                Err(_) => panic!("invalid params provided to fn"),
+            },
+        }
+    };
+    let body = list.pop_front().expect("failed tot get body");
+
+    list.push_front(
+        Context::new_function(
+            stack.scope.back().expect("failed to get root scope"),
+            name,
+            stack.scope.front().expect("failed to get scope").clone(),
+            params,
+            body,
+        )
+        .into_value(),
+    );
+}
+
+#[inline]
+pub fn do_special_form(stack: &mut Stack) {
+    let mut list = stack
+        .value
+        .pop_front()
+        .expect("failed to get args for do")
+        .downcast::<Object<List>>()
+        .expect("failed to downcast args as List");
+
+    while let Some(value) = list.pop_front() {
+        stack.value.push_front(value);
+        stack.state.push_front(State::Eval);
+    }
+}
+
+#[inline]
 pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
     let mut stack = Stack::new(scope.clone(), value.clone());
 
@@ -62,6 +171,11 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
             .get_with_type::<Kind>("Macro")
             .expect("failed to get Macro kind")
     };
+    let special_form_kind = unsafe {
+        scope
+            .get_with_type::<Kind>("SpecialForm")
+            .expect("failed to get SpecialForm kind")
+    };
     let symbol_kind = unsafe {
         scope
             .get_with_type::<Kind>("Symbol")
@@ -77,41 +191,64 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
         match stack.state.pop_front() {
             Some(state) => match state {
                 State::Eval => {
-                    let value = stack.value.pop_front().unwrap();
+                    let value = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get value from stack");
 
                     if value.kind() == &symbol_kind {
                         let string = value
                             .downcast_ref::<Object<String>>()
                             .expect("failed to get String");
 
-                        if let Some(value) = stack.scope.front().unwrap().get(string.value()) {
+                        if let Some(value) = stack
+                            .scope
+                            .front()
+                            .expect("failed to get scope")
+                            .get(string.value())
+                        {
                             stack.value.push_front(value.clone());
                         } else {
                             stack.value.push_front(nil_value.clone().into_value());
                         }
                     } else if value.kind() == &list_kind {
-                        let mut list = value.downcast::<Object<List>>().unwrap();
+                        let mut list = value
+                            .downcast::<Object<List>>()
+                            .expect("failed to downcast value as List");
 
-                        if let Some(first) = list.value_mut().pop_front() {
+                        if list.value().is_empty() {
                             stack.value.push_front(list.into_value());
-                            stack.value.push_front(first.clone());
+                        } else {
+                            list = unsafe {
+                                Gc::new(Object::new(
+                                    list_kind.clone(),
+                                    list.value().iter().map(Clone::clone).collect::<List>(),
+                                ))
+                            };
+                            let first = list
+                                .value_mut()
+                                .pop_front()
+                                .expect("failed get first value from list");
+                            stack.value.push_front(list.into_value());
+                            stack.value.push_front(first);
                             stack.state.push_front(State::EvalList);
                             stack.state.push_front(State::Eval);
-                        } else {
-                            stack.value.push_front(list.into_value());
                         }
                     } else {
                         stack.value.push_front(value);
                     }
                 }
                 State::EvalList => {
-                    let mut callable = stack.value.pop_front().unwrap();
+                    let mut callable = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get first value from list");
                     let mut list = stack
                         .value
                         .pop_front()
-                        .unwrap()
+                        .expect("failed to get list from stack")
                         .downcast::<Object<List>>()
-                        .unwrap();
+                        .expect("failed to downcast list to List");
 
                     if callable.kind() == &function_kind {
                         stack.value.push_front(callable);
@@ -142,24 +279,33 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                         stack.state.push_front(State::Return);
                         stack.state.push_front(State::Call);
                         stack.state.push_front(State::CallWithNewScope);
+                    } else if callable.kind() == &special_form_kind {
+                        let special_form = callable
+                            .downcast::<Object<SpecialForm>>()
+                            .expect("failed downcast value to SpecialForm");
+                        stack.value.push_front(list.into_value());
+                        (special_form.value().inner())(&mut stack);
                     } else {
                         panic!("Failed to call value {:?}", callable);
                     }
                 }
                 State::EvalArgs => {
-                    let mut evaluated_arg = stack.value.pop_front().unwrap();
+                    let mut evaluated_arg = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get arg from stack");
                     let mut evaluated_args = stack
                         .value
                         .pop_front()
-                        .unwrap()
+                        .expect("failed to get evaluated args from stack")
                         .downcast::<Object<List>>()
-                        .unwrap();
+                        .expect("failed to downcast evaluated args to List");
                     let mut args = stack
                         .value
                         .pop_front()
-                        .unwrap()
+                        .expect("failed to get args from stack")
                         .downcast::<Object<List>>()
-                        .unwrap();
+                        .expect("failed to downdcast args to List");
 
                     evaluated_args.value_mut().push_front(evaluated_arg);
 
@@ -174,13 +320,16 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                     }
                 }
                 State::CallWithNewScope => {
-                    let mut values = stack.value.pop_front().unwrap();
+                    let mut values = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get call args from stack");
                     let mut callable = stack
                         .value
                         .pop_front()
-                        .unwrap()
+                        .expect("failed to get callable from stack")
                         .downcast::<Object<Function>>()
-                        .unwrap();
+                        .expect("failed to cast callable to Function");
 
                     let mut scope = unsafe {
                         Gc::new(Object::new(
@@ -197,19 +346,22 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                     let mut values = stack
                         .value
                         .pop_front()
-                        .unwrap()
+                        .expect("failed to get values from stack")
                         .downcast::<Object<List>>()
-                        .unwrap()
+                        .expect("failed to downcast values to List")
                         .iter()
                         .map(Clone::clone)
                         .collect::<Vec<Gc<Value>>>();
                     let mut callable = stack
                         .value
                         .pop_front()
-                        .unwrap()
+                        .expect("failed to get callable from stack")
                         .downcast::<Object<Function>>()
-                        .unwrap();
-                    let mut scope = stack.scope.front_mut().unwrap();
+                        .expect("failed to downcast callable to Function");
+                    let mut scope = stack
+                        .scope
+                        .front_mut()
+                        .expect("failed to get scope from stack");
 
                     let mut index = 0;
                     let nil = nil_value.clone().into_value();
@@ -228,14 +380,46 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                     stack.state.push_front(State::Eval);
                 }
                 State::Return => {
-                    stack.scope.pop_front().unwrap();
+                    stack
+                        .scope
+                        .pop_front()
+                        .expect("failed to pop scope from stack");
+                }
+                State::If => {
+                    let expr = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get expr from stack");
+                    let if_expr = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get if expr from stack");
+                    let else_expr = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get else expr form stack");
+
+                    if expr
+                        .downcast::<Object<bool>>()
+                        .expect("failed to downcast expr as Boolean")
+                        .value()
+                        == &true
+                    {
+                        stack.value.push_front(if_expr);
+                    } else {
+                        stack.value.push_front(else_expr);
+                    }
+                    stack.state.push_front(State::Eval);
                 }
             },
             None => break,
         }
     }
 
-    stack.value.pop_front().unwrap()
+    stack
+        .value
+        .pop_front()
+        .expect("failed to get value from stack")
 }
 
 #[cfg(test)]
@@ -246,37 +430,19 @@ mod test {
 
     #[test]
     fn test() {
-        let mut context = Context::new();
+        let context = Context::new();
 
-        let hello_name = lisp!(context.scope_mut(), str "hello")
-            .downcast::<Object<String>>()
-            .unwrap();
-        let hello_body = lisp!(context.scope_mut(), str "Hello, world!");
-        let hello_params = lisp!(context.scope_mut(), ())
-            .downcast::<Object<List>>()
-            .unwrap();
-
-        let function_kind = unsafe { context.scope().get_with_type::<Kind>("Function").unwrap() };
-        let function = unsafe {
-            Gc::new(Object::new(
-                function_kind,
-                Function::new(
-                    Some(hello_name),
-                    context.scope().clone(),
-                    hello_params,
-                    hello_body,
-                ),
-            ))
-        };
-
-        context.scope_mut().set("hello", function.into_value());
-
-        let expr = lisp!(context.scope_mut(), (hello));
-        let output = eval(context.scope().clone(), expr);
+        let input = lisp!(context.scope(), (
+            (def test (fn (a) (if a true false)))
+            (test true)
+        ))
+        .into_value();
+        let output = eval(context.scope().clone(), input);
+        println!("{:?}", output);
 
         assert_eq!(
-            output.downcast::<Object<String>>().unwrap().value(),
-            "Hello, world!"
+            output.downcast::<Object<bool>>().expect("failed").value(),
+            &false
         );
     }
 }
