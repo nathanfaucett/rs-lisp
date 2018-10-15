@@ -3,7 +3,10 @@ use std::collections::LinkedList;
 use fnv::FnvHashMap;
 use gc::Gc;
 
-use super::{def_special_form, if_special_form, Function, Kind, Object, Scope, SpecialForm, Value};
+use super::{
+    def_special_form, do_special_form, fn_special_form, if_special_form, Function, Kind, Object,
+    Scope, SpecialForm, Value,
+};
 
 pub type List = LinkedList<Gc<Value>>;
 pub type Vector = Vec<Gc<Value>>;
@@ -220,12 +223,27 @@ impl Context {
             ))
             .into_value(),
         );
-
+        self.scope.set(
+            "fn",
+            Gc::new(Object::new(
+                special_form_kind.clone(),
+                SpecialForm::new(fn_special_form),
+            ))
+            .into_value(),
+        );
         self.scope.set(
             "def",
             Gc::new(Object::new(
                 special_form_kind.clone(),
                 SpecialForm::new(def_special_form),
+            ))
+            .into_value(),
+        );
+        self.scope.set(
+            "do",
+            Gc::new(Object::new(
+                special_form_kind.clone(),
+                SpecialForm::new(do_special_form),
             ))
             .into_value(),
         );
