@@ -4,8 +4,8 @@ use fnv::FnvHashMap;
 use gc::Gc;
 
 use super::{
-    def_special_form, do_special_form, fn_special_form, if_special_form, Function, Kind, Object,
-    Scope, SpecialForm, Value,
+    def_special_form, do_special_form, fn_special_form, if_special_form, macro_special_form,
+    quote_special_form, Function, Kind, Object, Scope, SpecialForm, Value,
 };
 
 pub type List = LinkedList<Gc<Value>>;
@@ -24,118 +24,6 @@ impl Context {
             let mut context = Context { scope: Gc::null() };
             context.init();
             context
-        }
-    }
-
-    #[inline]
-    pub fn new_true(scope: &Gc<Object<Scope>>) -> Gc<Object<bool>> {
-        unsafe {
-            scope
-                .get_with_type::<bool>("true")
-                .expect("failed to find true value")
-        }
-    }
-    #[inline]
-    pub fn new_false(scope: &Gc<Object<Scope>>) -> Gc<Object<bool>> {
-        unsafe {
-            scope
-                .get_with_type::<bool>("false")
-                .expect("failed to find false value")
-        }
-    }
-    #[inline]
-    pub fn new_nil(scope: &Gc<Object<Scope>>) -> Gc<Object<()>> {
-        unsafe {
-            scope
-                .get_with_type::<()>("nil")
-                .expect("failed to find nil value")
-        }
-    }
-
-    #[inline]
-    pub fn new_char(scope: &Gc<Object<Scope>>, value: char) -> Gc<Object<char>> {
-        unsafe {
-            let kind = scope
-                .get_with_type::<Kind>("Character")
-                .expect("failed to find Character type");
-            Gc::new(Object::new(kind, value))
-        }
-    }
-
-    #[inline]
-    pub fn new_keyword<T>(scope: &Gc<Object<Scope>>, value: T) -> Gc<Object<String>>
-    where
-        T: ToString,
-    {
-        unsafe {
-            let kind = scope
-                .get_with_type::<Kind>("Keyword")
-                .expect("failed to find Keyword type");
-            Gc::new(Object::new(kind, value.to_string()))
-        }
-    }
-
-    #[inline]
-    pub fn new_string<T>(scope: &Gc<Object<Scope>>, value: T) -> Gc<Object<String>>
-    where
-        T: ToString,
-    {
-        unsafe {
-            let kind = scope
-                .get_with_type::<Kind>("String")
-                .expect("failed to find String type");
-            Gc::new(Object::new(kind, value.to_string()))
-        }
-    }
-
-    #[inline]
-    pub fn new_symbol<T>(scope: &Gc<Object<Scope>>, value: T) -> Gc<Object<String>>
-    where
-        T: ToString,
-    {
-        unsafe {
-            let kind = scope
-                .get_with_type::<Kind>("Symbol")
-                .expect("failed to find Symbol type");
-            Gc::new(Object::new(kind, value.to_string()))
-        }
-    }
-
-    #[inline]
-    pub fn new_list(scope: &Gc<Object<Scope>>) -> Gc<Object<List>> {
-        unsafe {
-            let kind = scope
-                .get_with_type::<Kind>("List")
-                .expect("failed to find List type");
-            Gc::new(Object::new(kind, List::new()))
-        }
-    }
-    #[inline]
-    pub fn new_vector(scope: &Gc<Object<Scope>>) -> Gc<Object<Vector>> {
-        unsafe {
-            let kind = scope
-                .get_with_type::<Kind>("Vector")
-                .expect("failed to find Vector type");
-            Gc::new(Object::new(kind, Vector::new()))
-        }
-    }
-
-    #[inline]
-    pub fn new_function(
-        scope: &Gc<Object<Scope>>,
-        name: Option<Gc<Object<String>>>,
-        function_scope: Gc<Object<Scope>>,
-        params: Gc<Object<List>>,
-        body: Gc<Value>,
-    ) -> Gc<Object<Function>> {
-        unsafe {
-            let kind = scope
-                .get_with_type::<Kind>("Function")
-                .expect("failed to find Function type");
-            Gc::new(Object::new(
-                kind,
-                Function::new(name, function_scope, params, body),
-            ))
         }
     }
 
@@ -232,6 +120,14 @@ impl Context {
             .into_value(),
         );
         self.scope.set(
+            "macro",
+            Gc::new(Object::new(
+                special_form_kind.clone(),
+                SpecialForm::new(macro_special_form),
+            ))
+            .into_value(),
+        );
+        self.scope.set(
             "def",
             Gc::new(Object::new(
                 special_form_kind.clone(),
@@ -244,6 +140,14 @@ impl Context {
             Gc::new(Object::new(
                 special_form_kind.clone(),
                 SpecialForm::new(do_special_form),
+            ))
+            .into_value(),
+        );
+        self.scope.set(
+            "quote",
+            Gc::new(Object::new(
+                special_form_kind.clone(),
+                SpecialForm::new(quote_special_form),
             ))
             .into_value(),
         );
@@ -359,8 +263,10 @@ impl Context {
     unsafe fn init_list(&mut self) -> &mut Self {
         let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
-        let list_kind = Gc::new(Kind::new_kind::<List>(type_kind, "List"));
-        self.scope.set("List", list_kind.into_value());
+        let mut list_kind = Gc::new(Kind::new_kind::<List>(type_kind, "List"));
+        self.scope.set("List", list_kind.clone().into_value());
+
+        kind_add_function(&self.scope, &mut list_kind, "push_front", push_front);
 
         self
     }
@@ -384,4 +290,209 @@ impl Context {
 
         self
     }
+}
+
+#[inline]
+pub fn push_front(_scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
+    let mut list = args
+        .pop_front()
+        .expect("failed to get list")
+        .downcast::<Object<List>>()
+        .expect("failed to downcast List");
+
+    list.append(args.value_mut());
+    list.into_value()
+}
+
+#[inline]
+pub fn new_true(scope: &Gc<Object<Scope>>) -> Gc<Object<bool>> {
+    unsafe {
+        scope
+            .get_with_type::<bool>("true")
+            .expect("failed to find true value")
+    }
+}
+#[inline]
+pub fn new_false(scope: &Gc<Object<Scope>>) -> Gc<Object<bool>> {
+    unsafe {
+        scope
+            .get_with_type::<bool>("false")
+            .expect("failed to find false value")
+    }
+}
+#[inline]
+pub fn new_nil(scope: &Gc<Object<Scope>>) -> Gc<Object<()>> {
+    unsafe {
+        scope
+            .get_with_type::<()>("nil")
+            .expect("failed to find nil value")
+    }
+}
+
+#[inline]
+pub fn new_char(scope: &Gc<Object<Scope>>, value: char) -> Gc<Object<char>> {
+    unsafe {
+        let kind = scope
+            .get_with_type::<Kind>("Character")
+            .expect("failed to find Character type");
+        Gc::new(Object::new(kind, value))
+    }
+}
+
+#[inline]
+pub fn new_keyword<T>(scope: &Gc<Object<Scope>>, value: T) -> Gc<Object<String>>
+where
+    T: ToString,
+{
+    unsafe {
+        let kind = scope
+            .get_with_type::<Kind>("Keyword")
+            .expect("failed to find Keyword type");
+        Gc::new(Object::new(kind, value.to_string()))
+    }
+}
+
+#[inline]
+pub fn new_string<T>(scope: &Gc<Object<Scope>>, value: T) -> Gc<Object<String>>
+where
+    T: ToString,
+{
+    unsafe {
+        let kind = scope
+            .get_with_type::<Kind>("String")
+            .expect("failed to find String type");
+        Gc::new(Object::new(kind, value.to_string()))
+    }
+}
+
+#[inline]
+pub fn new_symbol<T>(scope: &Gc<Object<Scope>>, value: T) -> Gc<Object<String>>
+where
+    T: ToString,
+{
+    unsafe {
+        let kind = scope
+            .get_with_type::<Kind>("Symbol")
+            .expect("failed to find Symbol type");
+        Gc::new(Object::new(kind, value.to_string()))
+    }
+}
+
+#[inline]
+pub fn new_list(scope: &Gc<Object<Scope>>) -> Gc<Object<List>> {
+    unsafe {
+        let kind = scope
+            .get_with_type::<Kind>("List")
+            .expect("failed to find List type");
+        Gc::new(Object::new(kind, List::new()))
+    }
+}
+#[inline]
+pub fn new_vector(scope: &Gc<Object<Scope>>) -> Gc<Object<Vector>> {
+    unsafe {
+        let kind = scope
+            .get_with_type::<Kind>("Vector")
+            .expect("failed to find Vector type");
+        Gc::new(Object::new(kind, Vector::new()))
+    }
+}
+
+#[inline]
+pub fn new_function(
+    scope: &Gc<Object<Scope>>,
+    name: Option<Gc<Object<String>>>,
+    function_scope: Gc<Object<Scope>>,
+    params: Gc<Object<List>>,
+    body: Gc<Value>,
+) -> Gc<Object<Function>> {
+    unsafe {
+        let kind = scope
+            .get_with_type::<Kind>("Function")
+            .expect("failed to find Function type");
+        Gc::new(Object::new(
+            kind,
+            Function::new(name, function_scope, params, body),
+        ))
+    }
+}
+
+#[inline]
+pub fn new_macro(
+    scope: &Gc<Object<Scope>>,
+    name: Option<Gc<Object<String>>>,
+    function_scope: Gc<Object<Scope>>,
+    params: Gc<Object<List>>,
+    body: Gc<Value>,
+) -> Gc<Object<Function>> {
+    unsafe {
+        let kind = scope
+            .get_with_type::<Kind>("Macro")
+            .expect("failed to find Function type");
+        Gc::new(Object::new(
+            kind,
+            Function::new(name, function_scope, params, body),
+        ))
+    }
+}
+
+#[inline]
+pub fn new_external_function<F>(
+    scope: &Gc<Object<Scope>>,
+    name: Option<Gc<Object<String>>>,
+    function_scope: Gc<Object<Scope>>,
+    params: Gc<Object<List>>,
+    body: F,
+) -> Gc<Object<Function>>
+where
+    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
+{
+    unsafe {
+        let kind = scope
+            .get_with_type::<Kind>("Function")
+            .expect("failed to find Function type");
+        Gc::new(Object::new(
+            kind,
+            Function::new_external(name, function_scope, params, body),
+        ))
+    }
+}
+
+#[inline]
+pub fn new_external_macro<F>(
+    scope: &Gc<Object<Scope>>,
+    name: Option<Gc<Object<String>>>,
+    function_scope: Gc<Object<Scope>>,
+    params: Gc<Object<List>>,
+    body: F,
+) -> Gc<Object<Function>>
+where
+    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
+{
+    unsafe {
+        let kind = scope
+            .get_with_type::<Kind>("Macro")
+            .expect("failed to find Macro type");
+        Gc::new(Object::new(
+            kind,
+            Function::new_external(name, function_scope, params, body),
+        ))
+    }
+}
+
+#[inline]
+pub fn kind_add_function<T, F>(
+    scope: &Gc<Object<Scope>>,
+    kind: &mut Gc<Object<Kind>>,
+    name: T,
+    func: F,
+) where
+    T: ToString,
+    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
+{
+    let string = name.to_string();
+    let symbol = new_symbol(scope, string.to_string());
+    let mut params = new_list(scope);
+    params.push_back(new_symbol(scope, "list").into_value());
+    let value = new_external_function(scope, Some(symbol.clone()), scope.clone(), params, func);
+    kind.set(symbol.into_value(), value.into_value());
 }

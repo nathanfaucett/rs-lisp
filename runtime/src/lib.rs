@@ -14,9 +14,10 @@ extern crate lang_gc as gc;
 #[macro_use]
 mod lisp_macro;
 
-mod context;
+pub mod context;
 mod eval;
 mod function;
+mod function_kind;
 mod kind;
 mod number;
 mod object;
@@ -27,9 +28,10 @@ mod value;
 pub use self::context::*;
 pub use self::eval::*;
 pub use self::function::Function;
+pub use self::function_kind::FunctionKind;
 pub use self::kind::Kind;
 pub use self::number::Number;
 pub use self::object::Object;
 pub use self::scope::Scope;
-pub use self::special_form::SpecialForm;
+pub use self::special_form::*;
 pub use self::value::Value;

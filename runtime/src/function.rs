@@ -2,14 +2,14 @@ use std::fmt;
 
 use gc::Gc;
 
-use super::{List, Object, Scope, Value};
+use super::{FunctionKind, List, Object, Scope, Value};
 
 #[derive(PartialEq, Eq, Hash)]
 pub struct Function {
     name: Option<Gc<Object<String>>>,
     scope: Gc<Object<Scope>>,
     params: Gc<Object<List>>,
-    body: Gc<Value>,
+    body: FunctionKind,
 }
 
 impl fmt::Debug for Function {
@@ -40,7 +40,25 @@ impl Function {
             name: name,
             scope: scope,
             params: params,
-            body: body,
+            body: FunctionKind::new_internal(body),
+        }
+    }
+
+    #[inline(always)]
+    pub fn new_external<F>(
+        name: Option<Gc<Object<String>>>,
+        scope: Gc<Object<Scope>>,
+        params: Gc<Object<List>>,
+        body: F,
+    ) -> Self
+    where
+        F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
+    {
+        Function {
+            name: name,
+            scope: scope,
+            params: params,
+            body: FunctionKind::new_external(body),
         }
     }
 
@@ -57,7 +75,7 @@ impl Function {
         &self.params
     }
     #[inline(always)]
-    pub fn body(&self) -> &Gc<Value> {
+    pub fn body(&self) -> &FunctionKind {
         &self.body
     }
 }
