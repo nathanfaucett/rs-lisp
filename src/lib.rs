@@ -1,4 +1,6 @@
 #![no_std]
 
-pub extern crate lang_gc as gc;
-pub extern crate lang_runtime as runtime;
+pub extern crate lisp_gc as gc;
+pub extern crate lisp_runtime as runtime;
+
+pub use runtime::lisp;

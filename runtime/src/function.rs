@@ -4,12 +4,19 @@ use gc::Gc;
 
 use super::{FunctionKind, List, Object, Scope, Value};
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Eq, Hash)]
 pub struct Function {
     name: Option<Gc<Object<String>>>,
     scope: Gc<Object<Scope>>,
     params: Gc<Object<List>>,
     body: FunctionKind,
+}
+
+impl PartialEq for Function {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.body.eq(&other.body)
+    }
 }
 
 impl fmt::Debug for Function {

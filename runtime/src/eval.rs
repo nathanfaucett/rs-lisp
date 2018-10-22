@@ -382,7 +382,6 @@ mod test {
         ))
         .into_value();
         let output = eval(context.scope().clone(), input);
-        println!("{:?}", output);
 
         assert_eq!(
             output.downcast::<Object<bool>>().expect("failed").value(),

@@ -5,7 +5,7 @@ use gc::Gc;
 
 use super::{
     def_special_form, do_special_form, fn_special_form, if_special_form, macro_special_form,
-    quote_special_form, Function, Kind, Object, Scope, SpecialForm, Value,
+    quote_special_form, unquote_special_form, Function, Kind, Object, Scope, SpecialForm, Value,
 };
 
 pub type List = LinkedList<Gc<Value>>;
@@ -148,6 +148,14 @@ impl Context {
             Gc::new(Object::new(
                 special_form_kind.clone(),
                 SpecialForm::new(quote_special_form),
+            ))
+            .into_value(),
+        );
+        self.scope.set(
+            "unquote",
+            Gc::new(Object::new(
+                special_form_kind.clone(),
+                SpecialForm::new(unquote_special_form),
             ))
             .into_value(),
         );

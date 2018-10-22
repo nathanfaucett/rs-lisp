@@ -9,17 +9,38 @@ extern crate serde;
 extern crate serde_derive;
 extern crate fnv;
 
-extern crate lang_gc as gc;
+extern crate lisp_gc as gc;
 
-#[macro_use]
-mod lisp_macro;
+#[macro_export]
+macro_rules! lisp {
+    ($scope:expr, true) => {
+        $crate::context::new_true($scope)
+    };
+
+    ($scope:expr, false) => {
+        $crate::context::new_false($scope)
+    };
+
+    ($scope:expr, $symbol:ident) => {
+        $crate::context::new_symbol($scope, stringify!($symbol))
+    };
+
+    ($scope:expr, "$string:ident") => {
+        $crate::context::new_string($scope, stringify!($string))
+    };
+
+    ($scope:expr, ( $( $t:tt )* )) => {{
+        let mut list = $crate::context::new_list($scope);
+        $( list.push_back(lisp!($scope, $t).into_value()); )*
+        list
+    }};
+}
 
 pub mod context;
 mod eval;
 mod function;
 mod function_kind;
 mod kind;
-mod number;
 mod object;
 mod scope;
 mod special_form;
@@ -30,7 +51,6 @@ pub use self::eval::*;
 pub use self::function::Function;
 pub use self::function_kind::FunctionKind;
 pub use self::kind::Kind;
-pub use self::number::Number;
 pub use self::object::Object;
 pub use self::scope::Scope;
 pub use self::special_form::*;

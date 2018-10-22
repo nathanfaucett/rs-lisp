@@ -229,3 +229,18 @@ pub fn quote_special_form(stack: &mut Stack) {
         stack.value.push_front(value);
     }
 }
+
+#[inline]
+pub fn unquote_special_form(stack: &mut Stack) {
+    let mut list = stack
+        .value
+        .pop_front()
+        .expect("failed to get args for quote")
+        .downcast::<Object<List>>()
+        .expect("failed to downcast quote args as List");
+
+    if let Some(value) = list.pop_front() {
+        stack.value.push_front(value);
+        stack.state.push_front(State::Eval);
+    }
+}
