@@ -25,10 +25,6 @@ macro_rules! lisp {
         $crate::context::new_symbol($scope, stringify!($symbol))
     };
 
-    ($scope:expr, "$string:ident") => {
-        $crate::context::new_string($scope, stringify!($string))
-    };
-
     ($scope:expr, ( $( $t:tt )* )) => {{
         let mut list = $crate::context::new_list($scope);
         $( list.push_back(lisp!($scope, $t).into_value()); )*
@@ -41,17 +37,25 @@ mod eval;
 mod function;
 mod function_kind;
 mod kind;
+mod list;
+mod map;
 mod object;
 mod scope;
 mod special_form;
+mod symbol;
 mod value;
+mod vector;
 
 pub use self::context::*;
 pub use self::eval::*;
 pub use self::function::Function;
 pub use self::function_kind::FunctionKind;
 pub use self::kind::Kind;
+pub use self::list::List;
+pub use self::map::Map;
 pub use self::object::Object;
 pub use self::scope::Scope;
 pub use self::special_form::*;
+pub use self::symbol::Symbol;
 pub use self::value::Value;
+pub use self::vector::Vector;

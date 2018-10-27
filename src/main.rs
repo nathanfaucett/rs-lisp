@@ -13,6 +13,7 @@ fn main() {
         ))
     .into_value();
 
+    println!("{:?}", input);
     let output = eval(context.scope().clone(), input);
     println!("{:?}", output);
 }

@@ -1,16 +1,10 @@
-use std::collections::LinkedList;
-
-use fnv::FnvHashMap;
 use gc::Gc;
 
 use super::{
     def_special_form, do_special_form, fn_special_form, if_special_form, macro_special_form,
-    quote_special_form, unquote_special_form, Function, Kind, Object, Scope, SpecialForm, Value,
+    quote_special_form, unquote_special_form, Function, Kind, List, Map, Object, Scope,
+    SpecialForm, Symbol, Value, Vector,
 };
-
-pub type List = LinkedList<Gc<Value>>;
-pub type Vector = Vec<Gc<Value>>;
-pub type Map = FnvHashMap<Gc<Value>, Gc<Value>>;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Context {
@@ -35,7 +29,6 @@ impl Context {
             .init_special_form()
             .init_boolean()
             .init_character()
-            .init_keyword()
             .init_string()
             .init_symbol()
             .init_numbers()
@@ -192,16 +185,6 @@ impl Context {
     }
 
     #[inline]
-    unsafe fn init_keyword(&mut self) -> &mut Self {
-        let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
-
-        let keyword_kind = Gc::new(Kind::new_kind::<String>(type_kind, "Keyword"));
-        self.scope.set("Keyword", keyword_kind.into_value());
-
-        self
-    }
-
-    #[inline]
     unsafe fn init_string(&mut self) -> &mut Self {
         let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
@@ -215,7 +198,7 @@ impl Context {
     unsafe fn init_symbol(&mut self) -> &mut Self {
         let type_kind = self.scope.get_with_type::<Kind>("Type").unwrap();
 
-        let symbol_kind = Gc::new(Kind::new_kind::<String>(type_kind, "Symbol"));
+        let symbol_kind = Gc::new(Kind::new_kind::<Symbol>(type_kind, "Symbol"));
         self.scope.set("Symbol", symbol_kind.into_value());
 
         self
@@ -274,7 +257,7 @@ impl Context {
         let mut list_kind = Gc::new(Kind::new_kind::<List>(type_kind, "List"));
         self.scope.set("List", list_kind.clone().into_value());
 
-        kind_add_function(&self.scope, &mut list_kind, "push_front", push_front);
+        // kind_add_function(&self.scope, &mut list_kind, "push_front", push_front);
 
         self
     }
@@ -298,18 +281,6 @@ impl Context {
 
         self
     }
-}
-
-#[inline]
-pub fn push_front(_scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
-    let mut list = args
-        .pop_front()
-        .expect("failed to get list")
-        .downcast::<Object<List>>()
-        .expect("failed to downcast List");
-
-    list.append(args.value_mut());
-    list.into_value()
 }
 
 #[inline]
@@ -348,19 +319,6 @@ pub fn new_char(scope: &Gc<Object<Scope>>, value: char) -> Gc<Object<char>> {
 }
 
 #[inline]
-pub fn new_keyword<T>(scope: &Gc<Object<Scope>>, value: T) -> Gc<Object<String>>
-where
-    T: ToString,
-{
-    unsafe {
-        let kind = scope
-            .get_with_type::<Kind>("Keyword")
-            .expect("failed to find Keyword type");
-        Gc::new(Object::new(kind, value.to_string()))
-    }
-}
-
-#[inline]
 pub fn new_string<T>(scope: &Gc<Object<Scope>>, value: T) -> Gc<Object<String>>
 where
     T: ToString,
@@ -374,7 +332,7 @@ where
 }
 
 #[inline]
-pub fn new_symbol<T>(scope: &Gc<Object<Scope>>, value: T) -> Gc<Object<String>>
+pub fn new_symbol<T>(scope: &Gc<Object<Scope>>, value: T) -> Gc<Object<Symbol>>
 where
     T: ToString,
 {
@@ -382,7 +340,7 @@ where
         let kind = scope
             .get_with_type::<Kind>("Symbol")
             .expect("failed to find Symbol type");
-        Gc::new(Object::new(kind, value.to_string()))
+        Gc::new(Object::new(kind, Symbol::new(value.to_string())))
     }
 }
 
@@ -498,9 +456,9 @@ pub fn kind_add_function<T, F>(
     F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
 {
     let string = name.to_string();
-    let symbol = new_symbol(scope, string.to_string());
+    let name = new_string(scope, string.to_string());
     let mut params = new_list(scope);
     params.push_back(new_symbol(scope, "list").into_value());
-    let value = new_external_function(scope, Some(symbol.clone()), scope.clone(), params, func);
-    kind.set(symbol.into_value(), value.into_value());
+    let value = new_external_function(scope, Some(name.clone()), scope.clone(), params, func);
+    kind.set(name.into_value(), value.into_value());
 }

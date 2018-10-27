@@ -2,7 +2,9 @@ use std::collections::LinkedList;
 
 use gc::Gc;
 
-use super::{new_nil, Function, FunctionKind, Kind, List, Object, Scope, SpecialForm, Value};
+use super::{
+    new_nil, Function, FunctionKind, Kind, List, Object, Scope, SpecialForm, Symbol, Value,
+};
 
 #[derive(Debug)]
 pub enum State {
@@ -92,14 +94,14 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
 
                     if value.kind() == &symbol_kind {
                         let string = value
-                            .downcast_ref::<Object<String>>()
-                            .expect("failed to get String");
+                            .downcast_ref::<Object<Symbol>>()
+                            .expect("failed to get Symbol");
 
                         if let Some(value) = stack
                             .scope
                             .front()
                             .expect("failed to get scope")
-                            .get(string.value())
+                            .get(string.value().inner())
                         {
                             stack.value.push_front(value.clone());
                         } else {
@@ -114,10 +116,7 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                             stack.value.push_front(list.into_value());
                         } else {
                             list = unsafe {
-                                Gc::new(Object::new(
-                                    list_kind.clone(),
-                                    list.value().iter().map(Clone::clone).collect::<List>(),
-                                ))
+                                Gc::new(Object::new(list_kind.clone(), list.value().clone()))
                             };
                             let first = list
                                 .value_mut()
@@ -244,10 +243,7 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                         .expect("failed to get values from stack")
                         .downcast::<Object<List>>()
                         .expect("failed to downcast values to List");
-                    let mut values = arguments
-                        .iter()
-                        .map(Clone::clone)
-                        .collect::<Vec<Gc<Value>>>();
+                    let mut values = arguments.to_vec();
                     let mut callable = stack
                         .value
                         .pop_front()
@@ -262,8 +258,11 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                     let mut index = 0;
                     let nil = nil_value.clone().into_value();
                     for param in callable.value().params().value() {
-                        if let Some(key) = param.downcast_ref::<Object<String>>() {
-                            scope.set(key.value(), values.get(index).unwrap_or(&nil).clone());
+                        if let Some(key) = param.downcast_ref::<Object<Symbol>>() {
+                            scope.set(
+                                key.value().inner(),
+                                values.get(index).unwrap_or(&nil).clone(),
+                            );
                         }
                         index += 1;
                     }
@@ -324,15 +323,15 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                         .value
                         .pop_front()
                         .expect("failed to get key from stack")
-                        .downcast::<Object<String>>()
-                        .expect("failed to downcast key to String");
+                        .downcast::<Object<Symbol>>()
+                        .expect("failed to downcast key to Symbol");
 
                     stack
                         .scope
                         .front_mut()
                         .expect("failed to get scope")
                         .value_mut()
-                        .set(key.value(), value);
+                        .set(key.value().inner(), value);
                 }
 
                 State::Get => {
