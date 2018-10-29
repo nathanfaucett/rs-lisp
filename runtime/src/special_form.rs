@@ -211,7 +211,7 @@ pub fn dot_special_form(stack: &mut Stack) {
 
     stack.value.push_front(key);
     stack.value.push_front(object);
-    stack.state.push_front(State::Get);
+    stack.state.push_front(State::Lookup);
     stack.state.push_front(State::Eval);
     stack.state.push_front(State::Eval);
 }

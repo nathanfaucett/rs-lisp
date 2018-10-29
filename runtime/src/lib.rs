@@ -11,27 +11,6 @@ extern crate fnv;
 
 extern crate lisp_gc as gc;
 
-#[macro_export]
-macro_rules! lisp {
-    ($scope:expr, true) => {
-        $crate::context::new_true($scope)
-    };
-
-    ($scope:expr, false) => {
-        $crate::context::new_false($scope)
-    };
-
-    ($scope:expr, $symbol:ident) => {
-        $crate::context::new_symbol($scope, stringify!($symbol))
-    };
-
-    ($scope:expr, ( $( $t:tt )* )) => {{
-        let mut list = $crate::context::new_list($scope);
-        $( list.push_back(lisp!($scope, $t).into_value()); )*
-        list
-    }};
-}
-
 pub mod context;
 mod eval;
 mod function;
@@ -40,6 +19,7 @@ mod kind;
 mod list;
 mod map;
 mod object;
+mod read;
 mod scope;
 mod special_form;
 mod symbol;
@@ -54,6 +34,7 @@ pub use self::kind::Kind;
 pub use self::list::List;
 pub use self::map::Map;
 pub use self::object::Object;
+pub use self::read::*;
 pub use self::scope::Scope;
 pub use self::special_form::*;
 pub use self::symbol::Symbol;

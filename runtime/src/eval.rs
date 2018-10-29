@@ -16,7 +16,7 @@ pub enum State {
     Return,
     If,
     Def,
-    Get,
+    Lookup,
 }
 
 #[derive(Debug)]
@@ -334,11 +334,11 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                         .set(key.value().inner(), value);
                 }
 
-                State::Get => {
+                State::Lookup => {
                     let object = stack
                         .value
                         .pop_front()
-                        .expect("failed to get if value from stack");
+                        .expect("failed to get Value from stack");
                     let key = stack
                         .value
                         .pop_front()
@@ -368,18 +368,21 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
 mod test {
     use super::*;
 
-    use super::super::Context;
+    use super::super::{read, Context};
 
     #[test]
     fn test() {
         let context = Context::new();
 
-        let input = lisp!(context.scope(), (do
+        let raw = "
+        (do
             (def test (fn (a) (if a true false)))
             (def result (test true))
             result
         ))
-        .into_value();
+        ";
+
+        let input = read(context.scope(), raw);
         let output = eval(context.scope().clone(), input);
 
         assert_eq!(

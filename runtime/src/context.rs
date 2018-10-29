@@ -2,8 +2,8 @@ use gc::Gc;
 
 use super::{
     def_special_form, do_special_form, fn_special_form, if_special_form, macro_special_form,
-    quote_special_form, unquote_special_form, Function, Kind, List, Map, Object, Scope,
-    SpecialForm, Symbol, Value, Vector,
+    quote_special_form, read_internal, unquote_special_form, Function, Kind, List, Map, Object,
+    Scope, SpecialForm, Symbol, Value, Vector,
 };
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -35,6 +35,7 @@ impl Context {
             .init_list()
             .init_vector()
             .init_map()
+            .init_read()
     }
 
     #[inline]
@@ -257,7 +258,7 @@ impl Context {
         let mut list_kind = Gc::new(Kind::new_kind::<List>(type_kind, "List"));
         self.scope.set("List", list_kind.clone().into_value());
 
-        // kind_add_function(&self.scope, &mut list_kind, "push_front", push_front);
+        List::init(&mut self.scope, &mut list_kind);
 
         self
     }
@@ -281,6 +282,33 @@ impl Context {
 
         self
     }
+
+    #[inline]
+    unsafe fn init_read(&mut self) -> &mut Self {
+        let read_fn = new_rust_function(&self.scope, "read", read_internal).into_value();
+        self.scope.set("read", read_fn);
+        self
+    }
+}
+
+#[inline]
+pub fn new_usize(scope: &Gc<Object<Scope>>, value: usize) -> Gc<Object<usize>> {
+    unsafe {
+        let kind = scope
+            .get_with_type::<Kind>("USize")
+            .expect("failed to find USize type");
+        Gc::new(Object::new(kind, value))
+    }
+}
+
+#[inline]
+pub fn new_isize(scope: &Gc<Object<Scope>>, value: isize) -> Gc<Object<isize>> {
+    unsafe {
+        let kind = scope
+            .get_with_type::<Kind>("ISize")
+            .expect("failed to find ISize type");
+        Gc::new(Object::new(kind, value))
+    }
 }
 
 #[inline]
@@ -297,6 +325,14 @@ pub fn new_false(scope: &Gc<Object<Scope>>) -> Gc<Object<bool>> {
         scope
             .get_with_type::<bool>("false")
             .expect("failed to find false value")
+    }
+}
+#[inline]
+pub fn new_boolean(scope: &Gc<Object<Scope>>, value: bool) -> Gc<Object<bool>> {
+    if value {
+        new_true(scope)
+    } else {
+        new_false(scope)
     }
 }
 #[inline]
@@ -443,6 +479,19 @@ where
             Function::new_external(name, function_scope, params, body),
         ))
     }
+}
+
+#[inline]
+pub fn new_rust_function<T, F>(scope: &Gc<Object<Scope>>, name: T, func: F) -> Gc<Object<Function>>
+where
+    T: ToString,
+    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
+{
+    let string = name.to_string();
+    let name = new_string(scope, string.to_string());
+    let mut params = new_list(scope);
+    params.push_back(new_symbol(scope, "list").into_value());
+    new_external_function(scope, Some(name.clone()), scope.clone(), params, func)
 }
 
 #[inline]
