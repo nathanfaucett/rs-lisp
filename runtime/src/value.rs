@@ -1,6 +1,7 @@
 use std::any::{Any, TypeId};
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::ptr;
 
 use gc::Gc;
 
@@ -10,13 +11,12 @@ pub trait Value: Any {
     fn kind(&self) -> &Gc<Object<Kind>>;
     fn debug(&self, f: &mut fmt::Formatter) -> fmt::Result;
     fn equal(&self, other: &Value) -> bool;
-    fn hash(&self, hasher: &mut Hasher);
 }
 
 impl Value {
     #[inline]
     pub fn is<T: Value>(&self) -> bool {
-        TypeId::of::<T>() == Any::get_type_id(self)
+        TypeId::of::<T>() == Any::type_id(self)
     }
 
     #[inline]
@@ -88,7 +88,7 @@ impl Eq for Value {}
 impl Hash for Value {
     #[inline(always)]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.hash(state);
+        ptr::hash(self, state);
     }
 }
 

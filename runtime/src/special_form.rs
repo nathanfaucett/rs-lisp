@@ -3,7 +3,10 @@ use std::hash::{Hash, Hasher};
 
 use gc::Gc;
 
-use super::{new_function, new_macro, new_nil, List, Object, Stack, State, Value};
+use super::{
+    new_function, new_macro, nil_value, read_value, EvalState, List, Object, Reader, Stack, Symbol,
+    Value,
+};
 
 pub struct SpecialForm(Box<Fn(&mut Stack)>);
 
@@ -74,79 +77,86 @@ impl<'a> FnMut<(&'a mut Stack)> for SpecialForm {
 
 #[inline]
 pub fn if_special_form(stack: &mut Stack) {
-    let mut list = stack
+    let mut args = stack
         .value
         .pop_front()
-        .expect("failed to get args for if")
+        .expect("failed to get arguments for if")
         .downcast::<Object<List>>()
-        .expect("failed downcast args as List for if");
+        .expect("failed downcast arguments as List for if");
 
-    stack
-        .value
-        .push_front(list.pop_front().expect("failed to get expr")); // expr
-    stack
-        .value
-        .push_front(list.pop_front().expect("failed to get if expr")); // if expr
-    if let Some(value) = list.pop_front() {
-        stack.value.push_front(value); // else expr
+    let expr = args.pop_front().expect("failed to get expr");
+    let if_expr = args.pop_front().expect("failed to get if expr");
+
+    stack.state.push_front(EvalState::If);
+
+    if let Some(value) = args.pop_front() {
+        stack.value.push_front(value);
     } else {
         stack
             .value
-            .push_front(new_nil(stack.scope.back().expect("failed to get scope")).into_value()); // else expr
+            .push_front(nil_value(stack.scope.front().unwrap()).into_value());
     }
+    stack.value.push_front(if_expr);
 
-    stack.state.push_front(State::If);
-    stack.state.push_front(State::Eval);
+    stack.value.push_front(expr);
+    stack.state.push_front(EvalState::Eval);
 }
 
 #[inline]
 pub fn def_special_form(stack: &mut Stack) {
-    let mut list = stack
+    let mut args = stack
         .value
         .pop_front()
-        .expect("failed to get args for def")
+        .expect("failed to get arguments for def")
         .downcast::<Object<List>>()
-        .expect("failed downcast args as List for def");
+        .expect("failed downcast arguments as List for def");
 
-    let key = list.pop_front().expect("failed to get key for def");
-    let value = list.pop_front().expect("failed to get value for def");
+    let key = args.pop_front().expect("failed to get key for def");
+    let value = args.pop_front().expect("failed to get value for def");
+
+    // returns nil
+    stack
+        .value
+        .push_front(nil_value(stack.scope.front().unwrap()).into_value());
 
     stack.value.push_front(key);
     stack.value.push_front(value);
 
-    stack.state.push_front(State::Def);
-    stack.state.push_front(State::Eval);
+    stack.state.push_front(EvalState::Def);
+    stack.state.push_front(EvalState::Eval);
 }
 
 #[inline]
-fn build_function(stack: &mut Stack) -> (Option<Gc<Object<String>>>, Gc<Object<List>>, Gc<Value>) {
-    let mut list = stack
+fn build_function(stack: &mut Stack) -> (Option<Gc<Object<Symbol>>>, Gc<Object<List>>, Gc<Value>) {
+    let mut args = stack
         .value
         .pop_front()
-        .expect("failed to get args for fn")
+        .expect("failed to get arguments for function")
         .downcast::<Object<List>>()
-        .expect("failed downcast args as List for fn");
+        .expect("failed downcast arguments as List for function");
 
     let (name, params) = {
-        let first = list.pop_front().expect("failed to get name/params for fn");
+        let first = args
+            .pop_front()
+            .expect("failed to get function name/params for fn");
 
-        match first.downcast::<Object<String>>() {
+        match first.downcast::<Object<Symbol>>() {
             Ok(name) => {
                 let params = stack
                     .value
                     .pop_front()
-                    .expect("failed to get params")
+                    .expect("failed to get function params")
                     .downcast::<Object<List>>()
-                    .expect("failed to downcast params as List");
+                    .expect("failed to downcast function params as List");
                 (Some(name), params)
             }
             Err(first) => match first.downcast::<Object<List>>() {
                 Ok(params) => (None, params),
-                Err(_) => panic!("invalid params provided to fn"),
+                Err(_) => panic!("invalid function params provided to fn"),
             },
         }
     };
-    let body = list.pop_front().expect("failed tot get body");
+    let body = args.pop_front().expect("failed to function get body");
 
     (name, params, body)
 }
@@ -155,92 +165,96 @@ fn build_function(stack: &mut Stack) -> (Option<Gc<Object<String>>>, Gc<Object<L
 pub fn fn_special_form(stack: &mut Stack) {
     let (name, params, body) = build_function(stack);
 
-    stack.value.push_front(
-        new_function(
-            stack.scope.back().expect("failed to get root scope"),
-            name,
-            stack.scope.front().expect("failed to get scope").clone(),
-            params,
-            body,
-        )
-        .into_value(),
-    );
+    stack
+        .value
+        .push_front(new_function(stack.scope.front().unwrap(), name, params, body).into_value());
 }
 
 #[inline]
 pub fn macro_special_form(stack: &mut Stack) {
     let (name, params, body) = build_function(stack);
 
-    stack.value.push_front(
-        new_macro(
-            stack.scope.back().expect("failed to get root scope"),
-            name,
-            stack.scope.front().expect("failed to get scope").clone(),
-            params,
-            body,
-        )
-        .into_value(),
-    );
+    stack
+        .value
+        .push_front(new_macro(stack.scope.front().unwrap(), name, params, body).into_value());
 }
 
 #[inline]
 pub fn do_special_form(stack: &mut Stack) {
-    let mut list = stack
+    let mut args = stack
         .value
         .pop_front()
-        .expect("failed to get args for do")
+        .expect("failed to get arguments for do")
         .downcast::<Object<List>>()
-        .expect("failed to downcast do args as List");
+        .expect("failed to downcast do arguments as List");
 
-    while let Some(value) = list.pop_back() {
+    let mut first = false;
+
+    while let Some(value) = args.pop_back() {
+        if !first {
+            first = true;
+        } else {
+            stack.state.push_front(EvalState::PopValue);
+        }
+        stack.state.push_front(EvalState::Eval);
+
         stack.value.push_front(value);
-        stack.state.push_front(State::Eval);
     }
 }
 
 #[inline]
-pub fn dot_special_form(stack: &mut Stack) {
-    let mut list = stack
-        .value
-        .pop_front()
-        .expect("failed to get args for dot")
-        .downcast::<Object<List>>()
-        .expect("failed to downcast dot args as List");
-    let object = list.pop_front().expect("failed to get Object");
-    let key = list.pop_front().expect("failed to get key");
-
-    stack.value.push_front(key);
-    stack.value.push_front(object);
-    stack.state.push_front(State::Lookup);
-    stack.state.push_front(State::Eval);
-    stack.state.push_front(State::Eval);
-}
-
-#[inline]
 pub fn quote_special_form(stack: &mut Stack) {
-    let mut list = stack
+    let mut args = stack
         .value
         .pop_front()
-        .expect("failed to get args for quote")
+        .expect("failed to get arguments for quote")
         .downcast::<Object<List>>()
-        .expect("failed to downcast quote args as List");
+        .expect("failed to downcast quote arguments as List");
 
-    if let Some(value) = list.pop_front() {
+    if let Some(value) = args.pop_front() {
         stack.value.push_front(value);
     }
 }
 
 #[inline]
 pub fn unquote_special_form(stack: &mut Stack) {
-    let mut list = stack
+    let mut args = stack
         .value
         .pop_front()
-        .expect("failed to get args for quote")
+        .expect("failed to get arguments for quote")
         .downcast::<Object<List>>()
-        .expect("failed to downcast quote args as List");
+        .expect("failed to downcast quote arguments as List");
 
-    if let Some(value) = list.pop_front() {
+    if let Some(value) = args.pop_front() {
         stack.value.push_front(value);
-        stack.state.push_front(State::Eval);
+        stack.state.push_front(EvalState::Eval);
+    }
+}
+
+#[inline]
+pub fn read_special_form(stack: &mut Stack) {
+    let mut args = stack
+        .value
+        .pop_front()
+        .expect("failed to get arguments for quote")
+        .downcast::<Object<List>>()
+        .expect("failed to downcast quote arguments as List");
+
+    if let Some(value) = args.pop_front() {
+        let string = value
+            .downcast::<Object<String>>()
+            .expect("failed to downcast read argument to String");
+        let char_list = string.chars().collect::<::std::vec::Vec<char>>();
+        let mut reader = Reader::new(char_list);
+        let value = read_value(
+            stack.scope.front().expect("failed to get scope"),
+            &mut reader,
+        );
+
+        stack.value.push_front(value);
+    } else {
+        stack
+            .value
+            .push_front(nil_value(stack.scope.front().unwrap()).into_value());
     }
 }

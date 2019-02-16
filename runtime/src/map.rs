@@ -1,5 +1,5 @@
 use std::collections::hash_map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
-use std::fmt;
+use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 
 use fnv::FnvHashMap;
@@ -23,13 +23,19 @@ impl Hash for Map {
 impl fmt::Debug for Map {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut map = f.debug_map();
+        f.write_char('{')?;
+        let mut index = self.len();
 
         for (key, value) in self.0.iter() {
-            map.entry(key, value);
+            write!(f, "{:?} {:?}", key, value)?;
+
+            index -= 1;
+            if index != 0 {
+                write!(f, ", ")?;
+            }
         }
 
-        map.finish()
+        f.write_char('}')
     }
 }
 

@@ -4,7 +4,7 @@ use std::fmt;
 
 use gc::Gc;
 
-use super::{kind_add_function, new_boolean, new_usize, Kind, Object, Scope, Value};
+use super::{add_kind_method, new_bool, new_usize, Kind, Object, Scope, Value};
 
 #[derive(Eq, Hash)]
 pub struct List(LinkedList<Gc<Value>>);
@@ -158,9 +158,9 @@ impl List {
     }
 
     #[inline]
-    pub(crate) fn init(scope: &mut Gc<Object<Scope>>, list_kind: &mut Gc<Object<Kind>>) {
-        kind_add_function(scope, list_kind, "is_empty", list_is_empty);
-        kind_add_function(scope, list_kind, "len", list_len);
+    pub(crate) fn init(scope: &Gc<Object<Scope>>, list_kind: &mut Gc<Object<Kind>>) {
+        add_kind_method(scope, list_kind, "is_empty", list_is_empty);
+        add_kind_method(scope, list_kind, "len", list_len);
     }
 }
 
@@ -171,7 +171,8 @@ pub fn list_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<Val
         .expect("List is nil")
         .downcast_ref::<Object<List>>()
         .expect("Failed to downcast to List");
-    new_boolean(&scope, list.is_empty()).into_value()
+
+    new_bool(&scope, list.is_empty()).into_value()
 }
 
 #[inline]
@@ -181,5 +182,6 @@ pub fn list_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<Value> {
         .expect("List is nil")
         .downcast_ref::<Object<List>>()
         .expect("Failed to downcast to List");
+
     new_usize(&scope, list.len()).into_value()
 }

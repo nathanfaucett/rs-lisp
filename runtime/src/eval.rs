@@ -3,27 +3,31 @@ use std::collections::LinkedList;
 use gc::Gc;
 
 use super::{
-    new_nil, Function, FunctionKind, Kind, List, Object, Scope, SpecialForm, Symbol, Value,
+    function_kind, list_kind, macro_kind, map_kind, new_list, new_map, new_scope, new_vec,
+    nil_kind, nil_value, read_value, special_form_kind, symbol_kind, vec_kind, Function,
+    FunctionKind, List, Map, Object, Reader, Scope, SpecialForm, Symbol, Value, Vec,
 };
 
 #[derive(Debug)]
-pub enum State {
+pub enum EvalState {
     Eval,
-    EvalList,
-    EvalArgs,
-    CallWithNewScope,
+    EvalVec,
+    EvalMap,
+    EvalMapKeyValue,
     Call,
-    Return,
+    CallFunction,
+    CallFunctionEvalArgs,
+    PopValue,
+    PopScope,
     If,
     Def,
-    Lookup,
 }
 
 #[derive(Debug)]
 pub struct Stack {
     pub value: LinkedList<Gc<Value>>,
     pub scope: LinkedList<Gc<Object<Scope>>>,
-    pub state: LinkedList<State>,
+    pub state: LinkedList<EvalState>,
 }
 
 impl Stack {
@@ -37,102 +41,198 @@ impl Stack {
 
         stack.value.push_front(value);
         stack.scope.push_front(scope);
-        stack.state.push_front(State::Eval);
+        stack.state.push_front(EvalState::Eval);
 
         return stack;
     }
 }
 
 #[inline]
-pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
-    let mut stack = Stack::new(scope.clone(), value.clone());
-
-    let nil_value = unsafe {
-        scope
-            .get_with_type::<()>("nil")
-            .expect("failed to get nil value")
-    };
-    let scope_kind = unsafe {
-        scope
-            .get_with_type::<Kind>("Scope")
-            .expect("failed to get Scope kind")
-    };
-    let function_kind = unsafe {
-        scope
-            .get_with_type::<Kind>("Function")
-            .expect("failed to get Function kind")
-    };
-    let macro_kind = unsafe {
-        scope
-            .get_with_type::<Kind>("Macro")
-            .expect("failed to get Macro kind")
-    };
-    let special_form_kind = unsafe {
-        scope
-            .get_with_type::<Kind>("SpecialForm")
-            .expect("failed to get SpecialForm kind")
-    };
-    let symbol_kind = unsafe {
-        scope
-            .get_with_type::<Kind>("Symbol")
-            .expect("failed to get Symbol kind")
-    };
-    let list_kind = unsafe {
-        scope
-            .get_with_type::<Kind>("List")
-            .expect("failed to get List kind")
-    };
+pub fn eval(scope: &Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
+    let mut stack = Stack::new(scope.clone(), value);
 
     loop {
         match stack.state.pop_front() {
             Some(state) => match state {
-                State::Eval => {
-                    let value = stack
-                        .value
-                        .pop_front()
-                        .expect("failed to get value from stack");
+                EvalState::Eval => {
+                    let value = stack.value.pop_front().expect("failed to get value");
 
-                    if value.kind() == &symbol_kind {
+                    if value.kind() == &symbol_kind(stack.scope.front().unwrap()) {
                         let string = value
                             .downcast_ref::<Object<Symbol>>()
-                            .expect("failed to get Symbol");
+                            .expect("failed to downcast value to Symbol");
 
-                        if let Some(value) = stack
-                            .scope
-                            .front()
-                            .expect("failed to get scope")
-                            .get(string.value().inner())
+                        if let Some(value) =
+                            stack.scope.front().unwrap().get(string.value().inner())
                         {
                             stack.value.push_front(value.clone());
                         } else {
-                            stack.value.push_front(nil_value.clone().into_value());
+                            stack
+                                .value
+                                .push_front(nil_value(stack.scope.front().unwrap()).into_value());
                         }
-                    } else if value.kind() == &list_kind {
+                    } else if value.kind() == &list_kind(stack.scope.front().unwrap()) {
                         let mut list = value
                             .downcast::<Object<List>>()
-                            .expect("failed to downcast value as List");
+                            .expect("failed to downcast value to List");
 
-                        if list.value().is_empty() {
-                            stack.value.push_front(list.into_value());
+                        if list.is_empty() {
+                            stack
+                                .value
+                                .push_front(new_list(stack.scope.front().unwrap()).into_value());
                         } else {
-                            list = unsafe {
-                                Gc::new(Object::new(list_kind.clone(), list.value().clone()))
-                            };
-                            let first = list
-                                .value_mut()
-                                .pop_front()
-                                .expect("failed get first value from list");
+                            let mut args = list.clone_ref();
+                            let first = args.pop_front().unwrap();
 
-                            stack.value.push_front(list.into_value());
+                            stack.value.push_front(args.into_value());
                             stack.value.push_front(first);
-                            stack.state.push_front(State::EvalList);
-                            stack.state.push_front(State::Eval);
+
+                            stack.state.push_front(EvalState::Call);
+                            stack.state.push_front(EvalState::Eval);
+                        }
+                    } else if value.kind() == &vec_kind(stack.scope.front().unwrap()) {
+                        let mut vec = value
+                            .downcast::<Object<Vec>>()
+                            .expect("failed to downcast value to Vec")
+                            .clone_ref();
+
+                        if let Some(first) = vec.pop() {
+                            stack.state.push_front(EvalState::EvalVec);
+
+                            stack.value.push_front(vec.into_value());
+                            stack
+                                .value
+                                .push_front(new_vec(stack.scope.front().unwrap()).into_value());
+
+                            stack.state.push_front(EvalState::Eval);
+                            stack.value.push_front(first);
+                        } else {
+                            stack
+                                .value
+                                .push_front(new_vec(stack.scope.front().unwrap()).into_value());
+                        }
+                    } else if value.kind() == &map_kind(stack.scope.front().unwrap()) {
+                        let mut key_values = unsafe {
+                            Gc::new(Object::new(
+                                nil_kind(stack.scope.front().unwrap()),
+                                value
+                                    .downcast::<Object<Map>>()
+                                    .expect("failed to downcast value to Map")
+                                    .iter()
+                                    .map(|(k, v)| (k.clone(), v.clone()))
+                                    .collect::<LinkedList<_>>(),
+                            ))
+                        };
+
+                        if let Some((key, value)) = key_values.pop_front() {
+                            stack.state.push_front(EvalState::EvalMap);
+
+                            stack.value.push_front(key_values.into_value());
+                            stack
+                                .value
+                                .push_front(new_map(stack.scope.front().unwrap()).into_value());
+
+                            stack.state.push_front(EvalState::EvalMapKeyValue);
+                            stack.state.push_front(EvalState::Eval);
+
+                            stack.value.push_front(key);
+                            stack.value.push_front(value);
+                        } else {
+                            stack
+                                .value
+                                .push_front(new_map(stack.scope.front().unwrap()).into_value());
                         }
                     } else {
                         stack.value.push_front(value);
                     }
                 }
-                State::EvalList => {
+                EvalState::EvalVec => {
+                    let mut evaluated_value = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get value from stack");
+                    let mut evaluated_vec = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get evaluated vec from stack")
+                        .downcast::<Object<Vec>>()
+                        .expect("failed to downcast evaluated vec to vec");
+                    let mut key_values = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get vec from stack")
+                        .downcast::<Object<Vec>>()
+                        .expect("failed to downcast vec to Vec");
+
+                    evaluated_vec.push_front(evaluated_value);
+
+                    if let Some(first) = key_values.pop() {
+                        stack.state.push_front(EvalState::EvalVec);
+
+                        stack.value.push_front(key_values.into_value());
+                        stack.value.push_front(evaluated_vec.into_value());
+
+                        stack.state.push_front(EvalState::Eval);
+                        stack.value.push_front(first);
+                    } else {
+                        stack.value.push_front(evaluated_vec.into_value());
+                    }
+                }
+                EvalState::EvalMap => {
+                    let mut evaluated_key = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get key from stack");
+                    let mut evaluated_value = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get value from stack");
+                    let mut evaluated_map = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get evaluated map from stack")
+                        .downcast::<Object<Map>>()
+                        .expect("failed to downcast evaluated map to vec");
+                    let mut key_values = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get map from stack")
+                        .downcast::<Object<LinkedList<(Gc<Value>, Gc<Value>)>>>()
+                        .expect("failed to downcast map to Vec of key values");
+
+                    evaluated_map.set(evaluated_key, evaluated_value);
+
+                    if let Some((key, value)) = key_values.pop_front() {
+                        stack.state.push_front(EvalState::EvalMap);
+
+                        stack.value.push_front(key_values.into_value());
+                        stack.value.push_front(evaluated_map.into_value());
+
+                        stack.state.push_front(EvalState::EvalMapKeyValue);
+                        stack.state.push_front(EvalState::Eval);
+
+                        stack.value.push_front(key);
+                        stack.value.push_front(value);
+                    } else {
+                        stack.value.push_front(evaluated_map.into_value());
+                    }
+                }
+                EvalState::EvalMapKeyValue => {
+                    let mut value = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get key from stack");
+                    let mut key = stack
+                        .value
+                        .pop_front()
+                        .expect("failed to get key from stack");
+
+                    stack.state.push_front(EvalState::Eval);
+
+                    stack.value.push_front(value);
+                    stack.value.push_front(key);
+                }
+                EvalState::Call => {
                     let mut callable = stack
                         .value
                         .pop_front()
@@ -144,99 +244,73 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                         .downcast::<Object<List>>()
                         .expect("failed to downcast list to List");
 
-                    if callable.kind() == &function_kind {
+                    if callable.kind() == &function_kind(stack.scope.front().unwrap()) {
                         stack.value.push_front(callable);
-                        stack.state.push_front(State::Return);
-                        stack.state.push_front(State::Call);
-                        stack.state.push_front(State::CallWithNewScope);
+
+                        stack.state.push_front(EvalState::PopScope);
+                        stack.state.push_front(EvalState::CallFunction);
 
                         if let Some(first) = list.pop_front() {
                             stack.value.push_front(list.into_value());
-                            stack.value.push_front(
-                                unsafe { Gc::new(Object::new(list_kind.clone(), List::new())) }
-                                    .into_value(),
-                            );
-                            stack.state.push_front(State::EvalArgs);
+                            stack
+                                .value
+                                .push_front(new_list(stack.scope.front().unwrap()).into_value());
+                            stack.state.push_front(EvalState::CallFunctionEvalArgs);
 
+                            stack.state.push_front(EvalState::Eval);
                             stack.value.push_front(first);
-                            stack.state.push_front(State::Eval);
                         } else {
-                            stack.value.push_front(
-                                unsafe { Gc::new(Object::new(list_kind.clone(), List::new())) }
-                                    .into_value(),
-                            );
+                            stack.value.push_front(list.into_value());
                         }
-                    } else if callable.kind() == &macro_kind {
+                    } else if callable.kind() == &macro_kind(stack.scope.front().unwrap()) {
+                        stack.state.push_front(EvalState::Eval);
+                        stack.state.push_front(EvalState::PopScope);
+                        stack.state.push_front(EvalState::CallFunction);
+
                         stack.value.push_front(callable);
                         stack.value.push_front(list.into_value());
-                        stack.state.push_front(State::Eval);
-                        stack.state.push_front(State::Return);
-                        stack.state.push_front(State::Call);
-                        stack.state.push_front(State::CallWithNewScope);
-                    } else if callable.kind() == &special_form_kind {
+                    } else if callable.kind() == &special_form_kind(stack.scope.front().unwrap()) {
                         let special_form = callable
                             .downcast::<Object<SpecialForm>>()
                             .expect("failed downcast value to SpecialForm");
                         stack.value.push_front(list.into_value());
                         (special_form.value().inner())(&mut stack);
                     } else {
-                        panic!("Failed to call value {:?}", callable);
+                        panic!("Failed to call non-callable value {:?}", callable);
                     }
                 }
-                State::EvalArgs => {
+                EvalState::CallFunctionEvalArgs => {
                     let mut evaluated_arg = stack
                         .value
                         .pop_front()
-                        .expect("failed to get arg from stack");
+                        .expect("failed to get argument from stack");
                     let mut evaluated_args = stack
                         .value
                         .pop_front()
-                        .expect("failed to get evaluated args from stack")
+                        .expect("failed to get evaluated arguments from stack")
                         .downcast::<Object<List>>()
-                        .expect("failed to downcast evaluated args to List");
+                        .expect("failed to downcast evaluated arguments to List");
                     let mut args = stack
                         .value
                         .pop_front()
-                        .expect("failed to get args from stack")
+                        .expect("failed to get arguments from stack")
                         .downcast::<Object<List>>()
-                        .expect("failed to downdcast args to List");
+                        .expect("failed to downcast arguments to List");
 
-                    evaluated_args.value_mut().push_front(evaluated_arg);
+                    evaluated_args.push_back(evaluated_arg);
 
                     if let Some(first) = args.pop_front() {
                         stack.value.push_front(args.into_value());
                         stack.value.push_front(evaluated_args.into_value());
-                        stack.state.push_front(State::EvalArgs);
+                        stack.state.push_front(EvalState::CallFunctionEvalArgs);
+
                         stack.value.push_front(first);
-                        stack.state.push_front(State::Eval);
+                        stack.state.push_front(EvalState::Eval);
                     } else {
                         stack.value.push_front(evaluated_args.into_value());
                     }
                 }
-                State::CallWithNewScope => {
-                    let mut values = stack
-                        .value
-                        .pop_front()
-                        .expect("failed to get call args from stack");
-                    let mut callable = stack
-                        .value
-                        .pop_front()
-                        .expect("failed to get callable from stack")
-                        .downcast::<Object<Function>>()
-                        .expect("failed to cast callable to Function");
-
-                    let mut scope = unsafe {
-                        Gc::new(Object::new(
-                            scope_kind.clone(),
-                            Scope::new(Some(callable.value().scope().clone())),
-                        ))
-                    };
-
-                    stack.value.push_front(callable.into_value());
-                    stack.value.push_front(values);
-                    stack.scope.push_front(scope);
-                }
-                State::Call => {
+                EvalState::CallFunction => {
                     let mut arguments = stack
                         .value
                         .pop_front()
@@ -250,13 +324,15 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                         .expect("failed to get callable from stack")
                         .downcast::<Object<Function>>()
                         .expect("failed to downcast callable to Function");
-                    let mut scope = stack
-                        .scope
-                        .front_mut()
-                        .expect("failed to get scope from stack");
+                    let mut scope = new_scope(callable.scope());
+
+                    if let Some(name) = callable.value().name() {
+                        scope.set(name.value().inner(), callable.clone().into_value());
+                    }
 
                     let mut index = 0;
-                    let nil = nil_value.clone().into_value();
+                    let nil = nil_value(&scope).into_value();
+
                     for param in callable.value().params().value() {
                         if let Some(key) = param.downcast_ref::<Object<Symbol>>() {
                             scope.set(
@@ -267,14 +343,12 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                         index += 1;
                     }
 
-                    if let Some(name) = callable.value().name() {
-                        scope.set(name.value(), callable.clone().into_value());
-                    }
+                    stack.scope.push_front(scope.clone());
 
                     match callable.value().body() {
                         &FunctionKind::Internal(ref body) => {
                             stack.value.push_front(body.clone());
-                            stack.state.push_front(State::Eval);
+                            stack.state.push_front(EvalState::Eval);
                         }
                         &FunctionKind::External(ref body) => {
                             let value = (&**body)(scope.clone(), arguments);
@@ -282,13 +356,13 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                         }
                     }
                 }
-                State::Return => {
-                    stack
-                        .scope
-                        .pop_front()
-                        .expect("failed to pop scope from stack");
+                EvalState::PopValue => {
+                    stack.value.pop_front().expect("failed to pop value");
                 }
-                State::If => {
+                EvalState::PopScope => {
+                    stack.scope.pop_front().expect("failed to pop scope");
+                }
+                EvalState::If => {
                     let expr = stack
                         .value
                         .pop_front()
@@ -312,9 +386,9 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                     } else {
                         stack.value.push_front(else_expr);
                     }
-                    stack.state.push_front(State::Eval);
+                    stack.state.push_front(EvalState::Eval);
                 }
-                State::Def => {
+                EvalState::Def => {
                     let value = stack
                         .value
                         .pop_front()
@@ -330,28 +404,7 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                         .scope
                         .front_mut()
                         .expect("failed to get scope")
-                        .value_mut()
                         .set(key.value().inner(), value);
-                }
-
-                State::Lookup => {
-                    let object = stack
-                        .value
-                        .pop_front()
-                        .expect("failed to get Value from stack");
-                    let key = stack
-                        .value
-                        .pop_front()
-                        .expect("failed to get key from stack");
-
-                    if let Some(value) = object.kind().get(&key).map(Clone::clone) {
-                        stack.value.push_front(value);
-                    } else {
-                        stack.value.push_front(
-                            new_nil(stack.scope.back().expect("failed to get root scope"))
-                                .into_value(),
-                        );
-                    }
                 }
             },
             None => break,
@@ -364,30 +417,15 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
         .expect("failed to get value from stack")
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    use super::super::{read, Context};
-
-    #[test]
-    fn test() {
-        let context = Context::new();
-
-        let raw = "
-        (do
-            (def test (fn (a) (if a true false)))
-            (def result (test true))
-            result
-        ))
-        ";
-
-        let input = read(context.scope(), raw);
-        let output = eval(context.scope().clone(), input);
-
-        assert_eq!(
-            output.downcast::<Object<bool>>().expect("failed").value(),
-            &true
-        );
-    }
+#[inline]
+pub fn read<T>(scope: &Gc<Object<Scope>>, string: T) -> Gc<Value>
+where
+    T: ToString,
+{
+    let char_list = string
+        .to_string()
+        .chars()
+        .collect::<::std::vec::Vec<char>>();
+    let mut reader = Reader::new(char_list);
+    read_value(scope, &mut reader)
 }

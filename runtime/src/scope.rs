@@ -13,8 +13,9 @@ pub struct Scope {
 }
 
 impl Hash for Scope {
+    #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.parent.hash(state);
+        self.parent.as_ref().map(|p| p.hash(state));
     }
 }
 

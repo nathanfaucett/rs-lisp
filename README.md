@@ -1,5 +1,3 @@
-# rs-lang
+# rs-lisp
 
-=====
-
-a language
+an evaluable lispy ast runtime

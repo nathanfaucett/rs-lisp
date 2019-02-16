@@ -1,7 +1,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
-#![feature(get_type_id)]
+#![feature(ptr_hash)]
 
 extern crate num_traits;
 extern crate serde;
@@ -15,28 +15,30 @@ pub mod context;
 mod eval;
 mod function;
 mod function_kind;
+mod keyword;
 mod kind;
 mod list;
 mod map;
 mod object;
-mod read;
+mod reader;
 mod scope;
 mod special_form;
 mod symbol;
 mod value;
-mod vector;
+mod vec;
 
 pub use self::context::*;
 pub use self::eval::*;
-pub use self::function::Function;
-pub use self::function_kind::FunctionKind;
-pub use self::kind::Kind;
-pub use self::list::List;
-pub use self::map::Map;
-pub use self::object::Object;
-pub use self::read::*;
-pub use self::scope::Scope;
+pub use self::function::*;
+pub use self::function_kind::*;
+pub use self::keyword::*;
+pub use self::kind::*;
+pub use self::list::*;
+pub use self::map::*;
+pub use self::object::*;
+pub use self::reader::*;
+pub use self::scope::*;
 pub use self::special_form::*;
-pub use self::symbol::Symbol;
-pub use self::value::Value;
-pub use self::vector::Vector;
+pub use self::symbol::*;
+pub use self::value::*;
+pub use self::vec::*;

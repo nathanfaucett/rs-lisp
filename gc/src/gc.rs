@@ -48,6 +48,16 @@ impl<T> Gc<T> {
 
 impl<T> Gc<T>
 where
+    T: Clone,
+{
+    #[inline(always)]
+    pub fn clone_ref(&self) -> Self {
+        unsafe { Gc::new(self.as_ref().clone()) }
+    }
+}
+
+impl<T> Gc<T>
+where
     T: ?Sized,
 {
     #[inline(always)]
@@ -94,7 +104,7 @@ where
 {
     #[inline(always)]
     pub fn is<V: Any>(&self) -> bool {
-        TypeId::of::<V>() == Any::get_type_id(self)
+        TypeId::of::<V>() == Any::type_id(self)
     }
 
     #[inline(always)]
@@ -227,8 +237,6 @@ where
 {
     #[inline(always)]
     fn clone(&self) -> Self {
-        Gc {
-            ptr: self.ptr.clone(),
-        }
+        Gc { ptr: self.ptr }
     }
 }

@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::fmt::{self, Debug, Display};
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
+use std::ptr;
 
 use gc::Gc;
 
@@ -10,7 +11,7 @@ use super::{Kind, Value};
 #[derive(Clone)]
 pub struct Object<T>
 where
-    T: PartialEq + Hash + Debug,
+    T: PartialEq + Debug,
 {
     pub(crate) kind: Gc<Object<Kind>>,
     pub(crate) value: T,
@@ -18,7 +19,7 @@ where
 
 impl<T> Object<T>
 where
-    T: PartialEq + Hash + Debug,
+    T: PartialEq + Debug,
 {
     #[inline(always)]
     pub fn new(kind: Gc<Object<Kind>>, value: T) -> Self {
@@ -40,7 +41,7 @@ where
 
 impl<T> Deref for Object<T>
 where
-    T: PartialEq + Hash + Debug,
+    T: PartialEq + Debug,
 {
     type Target = T;
 
@@ -52,7 +53,7 @@ where
 
 impl<T> DerefMut for Object<T>
 where
-    T: PartialEq + Hash + Debug,
+    T: PartialEq + Debug,
 {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -62,7 +63,7 @@ where
 
 impl<T> Object<T>
 where
-    T: 'static + PartialEq + Hash + Debug,
+    T: 'static + PartialEq + Debug,
 {
     #[inline(always)]
     pub fn into_value(self: Gc<Self>) -> Gc<Value> {
@@ -72,7 +73,7 @@ where
 
 impl<T> Value for Object<T>
 where
-    T: 'static + PartialEq + Hash + Debug,
+    T: 'static + PartialEq + Debug,
 {
     #[inline(always)]
     fn kind(&self) -> &Gc<Object<Kind>> {
@@ -91,16 +92,21 @@ where
             None => false,
         }
     }
+}
 
+impl<T> Hash for Object<T>
+where
+    T: PartialOrd + PartialEq + Debug,
+{
     #[inline(always)]
-    fn hash(&self, hasher: &mut Hasher) {
-        Hash::hash(self, &mut HasherMut(hasher));
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        ptr::hash(self, state);
     }
 }
 
 impl<T> PartialOrd for Object<T>
 where
-    T: PartialOrd + PartialEq + Hash + Debug,
+    T: PartialOrd + PartialEq + Debug,
 {
     #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -110,7 +116,7 @@ where
 
 impl<T> Ord for Object<T>
 where
-    T: Ord + PartialEq + Hash + Debug,
+    T: Ord + PartialEq + Debug,
 {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
@@ -120,7 +126,7 @@ where
 
 impl<T> PartialEq for Object<T>
 where
-    T: PartialEq + Hash + Debug,
+    T: PartialEq + Debug,
 {
     #[inline(always)]
     fn eq(&self, other: &Self) -> bool {
@@ -128,21 +134,11 @@ where
     }
 }
 
-impl<T> Eq for Object<T> where T: Eq + PartialEq + Hash + Debug {}
-
-impl<T> Hash for Object<T>
-where
-    T: PartialEq + Hash + Debug,
-{
-    #[inline(always)]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        Hash::hash(self.value(), state);
-    }
-}
+impl<T> Eq for Object<T> where T: Eq + PartialEq + Debug {}
 
 impl<T> Debug for Object<T>
 where
-    T: PartialEq + Hash + Debug,
+    T: PartialEq + Debug,
 {
     #[inline(always)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -152,27 +148,10 @@ where
 
 impl<T> Display for Object<T>
 where
-    T: Display + PartialEq + Hash + Debug,
+    T: Display + PartialEq + Debug,
 {
     #[inline(always)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt(&self.value, f)
-    }
-}
-
-// https://github.com/Rufflewind/any_key/blob/master/src/lib.rs#L40
-pub struct HasherMut<H: ?Sized + Hasher>(pub H);
-
-impl<H> Hasher for HasherMut<H>
-where
-    H: ?Sized + Hasher,
-{
-    #[inline(always)]
-    fn finish(&self) -> u64 {
-        self.0.finish()
-    }
-    #[inline(always)]
-    fn write(&mut self, bytes: &[u8]) {
-        self.0.write(bytes)
     }
 }

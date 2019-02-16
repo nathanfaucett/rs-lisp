@@ -1,16 +1,16 @@
 use std::collections::LinkedList;
 use std::fmt;
 use std::slice::{Iter, IterMut};
-use std::vec::IntoIter;
+use std::vec::{self, IntoIter};
 
 use gc::Gc;
 
 use super::Value;
 
 #[derive(Eq, Hash)]
-pub struct Vector(Vec<Gc<Value>>);
+pub struct Vec(vec::Vec<Gc<Value>>);
 
-impl fmt::Debug for Vector {
+impl fmt::Debug for Vec {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut list = f.debug_list();
@@ -23,7 +23,7 @@ impl fmt::Debug for Vector {
     }
 }
 
-impl PartialEq for Vector {
+impl PartialEq for Vec {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
@@ -43,14 +43,18 @@ impl PartialEq for Vector {
     }
 }
 
-impl Clone for Vector {
+impl Clone for Vec {
     #[inline]
     fn clone(&self) -> Self {
-        Vector(self.0.iter().map(Clone::clone).collect::<Vec<Gc<Value>>>())
+        Vec(self
+            .0
+            .iter()
+            .map(Clone::clone)
+            .collect::<vec::Vec<Gc<Value>>>())
     }
 }
 
-impl IntoIterator for Vector {
+impl IntoIterator for Vec {
     type Item = Gc<Value>;
     type IntoIter = IntoIter<Self::Item>;
 
@@ -60,7 +64,7 @@ impl IntoIterator for Vector {
     }
 }
 
-impl<'a> IntoIterator for &'a Vector {
+impl<'a> IntoIterator for &'a Vec {
     type Item = &'a Gc<Value>;
     type IntoIter = Iter<'a, Gc<Value>>;
 
@@ -70,7 +74,7 @@ impl<'a> IntoIterator for &'a Vector {
     }
 }
 
-impl<'a> IntoIterator for &'a mut Vector {
+impl<'a> IntoIterator for &'a mut Vec {
     type Item = &'a mut Gc<Value>;
     type IntoIter = IterMut<'a, Gc<Value>>;
 
@@ -80,10 +84,10 @@ impl<'a> IntoIterator for &'a mut Vector {
     }
 }
 
-impl Vector {
+impl Vec {
     #[inline]
     pub fn new() -> Self {
-        Vector(Vec::new())
+        Vec(vec::Vec::new())
     }
 
     #[inline]
@@ -99,6 +103,12 @@ impl Vector {
     #[inline]
     pub fn push(&mut self, value: Gc<Value>) -> &mut Self {
         self.0.push(value);
+        self
+    }
+
+    #[inline]
+    pub fn push_front(&mut self, value: Gc<Value>) -> &mut Self {
+        self.0.insert(0, value);
         self
     }
 
@@ -126,7 +136,7 @@ impl Vector {
     }
 
     #[inline]
-    pub fn append(&mut self, list: &mut Vector) -> &mut Self {
+    pub fn append(&mut self, list: &mut Vec) -> &mut Self {
         self.0.append(&mut list.0);
         self
     }

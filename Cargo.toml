@@ -6,7 +6,7 @@ authors = ["Nathan Faucett <nathanfaucett@gmail.com>"]
 keywords = ["lisp"]
 categories = []
 
-description = "lisp"
+description = "an evaluable lispy ast runtime"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://gitlab.com/nathanfaucett/rs-lisp.git"

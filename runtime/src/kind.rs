@@ -1,26 +1,15 @@
-use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use std::mem;
 
 use gc::Gc;
 
-use super::{Object, Value};
+use super::{Map, Object, Value};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Kind {
     name: String,
     size: usize,
     align: usize,
-    data: HashMap<Gc<Value>, Gc<Value>>,
-}
-
-impl Hash for Kind {
-    #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.size.hash(state);
-        self.align.hash(state);
-    }
+    data: Map,
 }
 
 impl Kind {
@@ -30,7 +19,7 @@ impl Kind {
             name: name,
             size: size,
             align: align,
-            data: HashMap::new(),
+            data: Map::new(),
         }
     }
 
@@ -68,7 +57,7 @@ impl Kind {
 
     #[inline]
     pub fn set(&mut self, key: Gc<Value>, value: Gc<Value>) -> &mut Self {
-        self.data.insert(key, value);
+        self.data.set(key, value);
         self
     }
 }

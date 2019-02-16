@@ -1,21 +1,31 @@
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
 use gc::Gc;
 
-use super::{FunctionKind, List, Object, Scope, Value};
+use super::{FunctionKind, List, Object, Scope, Symbol, Value};
 
-#[derive(Eq, Hash)]
 pub struct Function {
-    name: Option<Gc<Object<String>>>,
+    name: Option<Gc<Object<Symbol>>>,
     scope: Gc<Object<Scope>>,
     params: Gc<Object<List>>,
     body: FunctionKind,
 }
 
+impl Hash for Function {
+    #[inline(always)]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.scope.hash(state);
+        self.params.hash(state);
+        self.body.hash(state);
+    }
+}
+
 impl PartialEq for Function {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.body.eq(&other.body)
+        self.name.eq(&other.name) && self.body.eq(&other.body)
     }
 }
 
@@ -38,7 +48,7 @@ impl fmt::Debug for Function {
 impl Function {
     #[inline(always)]
     pub fn new(
-        name: Option<Gc<Object<String>>>,
+        name: Option<Gc<Object<Symbol>>>,
         scope: Gc<Object<Scope>>,
         params: Gc<Object<List>>,
         body: Gc<Value>,
@@ -53,7 +63,7 @@ impl Function {
 
     #[inline(always)]
     pub fn new_external<F>(
-        name: Option<Gc<Object<String>>>,
+        name: Option<Gc<Object<Symbol>>>,
         scope: Gc<Object<Scope>>,
         params: Gc<Object<List>>,
         body: F,
@@ -70,7 +80,7 @@ impl Function {
     }
 
     #[inline(always)]
-    pub fn name(&self) -> &Option<Gc<Object<String>>> {
+    pub fn name(&self) -> &Option<Gc<Object<Symbol>>> {
         &self.name
     }
     #[inline(always)]
