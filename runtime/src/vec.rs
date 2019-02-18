@@ -1,13 +1,15 @@
 use std::collections::LinkedList;
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::ptr;
 use std::slice::{Iter, IterMut};
 use std::vec::{self, IntoIter};
 
 use gc::Gc;
 
-use super::Value;
+use super::{add_kind_method, new_bool, new_isize, nil_value, Kind, List, Object, Scope, Value};
 
-#[derive(Eq, Hash)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Vec(vec::Vec<Gc<Value>>);
 
 impl fmt::Debug for Vec {
@@ -23,34 +25,17 @@ impl fmt::Debug for Vec {
     }
 }
 
-impl PartialEq for Vec {
+impl Hash for Vec {
     #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            false
-        } else {
-            let mut a = self.0.iter();
-            let mut b = other.0.iter();
-
-            while let Some(a_value) = a.next() {
-                if Some(a_value) == b.next() {
-                    return false;
-                }
-            }
-
-            true
-        }
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        ptr::hash(self, state)
     }
 }
 
-impl Clone for Vec {
+impl From<vec::Vec<Gc<Value>>> for Vec {
     #[inline]
-    fn clone(&self) -> Self {
-        Vec(self
-            .0
-            .iter()
-            .map(Clone::clone)
-            .collect::<vec::Vec<Gc<Value>>>())
+    fn from(vec: vec::Vec<Gc<Value>>) -> Self {
+        Vec(vec)
     }
 }
 
@@ -98,6 +83,15 @@ impl Vec {
     #[inline]
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    #[inline]
+    pub fn get(&self, index: usize) -> Option<&Gc<Value>> {
+        self.0.get(index)
+    }
+    #[inline]
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Gc<Value>> {
+        self.0.get_mut(index)
     }
 
     #[inline]
@@ -156,4 +150,51 @@ impl Vec {
     pub fn iter_mut(&mut self) -> IterMut<Gc<Value>> {
         self.0.iter_mut()
     }
+
+    #[inline]
+    pub(crate) fn init(scope: &Gc<Object<Scope>>, vec_kind: &mut Gc<Object<Kind>>) {
+        add_kind_method(scope, vec_kind, "is_empty", vec_is_empty);
+        add_kind_method(scope, vec_kind, "len", vec_len);
+        add_kind_method(scope, vec_kind, "nth", vec_nth);
+    }
+}
+
+#[inline]
+pub fn vec_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<Value> {
+    let vec = args
+        .front()
+        .expect("Vec is nil")
+        .downcast_ref::<Object<Vec>>()
+        .expect("Failed to downcast to Vec");
+
+    new_bool(&scope, vec.is_empty()).into_value()
+}
+
+#[inline]
+pub fn vec_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<Value> {
+    let vec = args
+        .front()
+        .expect("Vec is nil")
+        .downcast_ref::<Object<Vec>>()
+        .expect("Failed to downcast to Vec");
+
+    new_isize(&scope, vec.len() as isize).into_value()
+}
+
+#[inline]
+pub fn vec_nth(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
+    let vec = args
+        .pop_front()
+        .expect("Vec is nil")
+        .downcast::<Object<Vec>>()
+        .expect("Failed to downcast to Vec");
+    let nth = args
+        .pop_front()
+        .expect("nth is nil")
+        .downcast::<Object<isize>>()
+        .expect("Failed to downcast to USize");
+
+    vec.get(*nth.value() as usize)
+        .map(Clone::clone)
+        .unwrap_or_else(|| nil_value(&scope).into_value())
 }

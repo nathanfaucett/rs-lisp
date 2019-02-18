@@ -1,13 +1,13 @@
-use std::num::{ParseFloatError, ParseIntError};
+use std::num::ParseIntError;
 use std::str::FromStr;
 use std::vec;
 
 use gc::Gc;
 
 use super::{
-    new_char, new_f32, new_f64, new_i16, new_i32, new_i64, new_i8, new_isize, new_keyword,
-    new_list, new_map, new_nan_f32, new_nan_f64, new_string, new_symbol, new_u16, new_u32, new_u64,
-    new_u8, new_usize, new_vec, nil_value, Keyword, List, Map, Object, Scope, Symbol, Value, Vec,
+    new_char, new_escape, new_i16, new_i32, new_i64, new_i8, new_isize, new_keyword, new_list,
+    new_map, new_string, new_symbol, new_u16, new_u32, new_u64, new_u8, new_usize, new_vec,
+    nil_value, Escape, Keyword, List, Map, Object, Scope, Symbol, Value, Vec,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -75,6 +75,10 @@ pub fn read_value(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Value> {
                 ':' => {
                     reader.consume();
                     return read_keyword(scope, reader).into_value();
+                }
+                '`' => {
+                    reader.consume();
+                    return read_escape(scope, reader).into_value();
                 }
                 ch => {
                     if is_numeric(reader, ch) {
@@ -191,6 +195,11 @@ fn read_keyword(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Key
 }
 
 #[inline]
+fn read_escape(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Escape>> {
+    new_escape(scope, read_value(scope, reader))
+}
+
+#[inline]
 fn read_string(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<String>> {
     let mut string = String::new();
 
@@ -293,18 +302,20 @@ fn read_number(scope: &Gc<Object<Scope>>, reader: &mut Reader, ch: char) -> Gc<V
     }
 
     match typ_char {
-        'u' => match from_int(scope, &string, &typ_size) {
+        'u' => match from_uint(scope, &string, &typ_size) {
             Ok(n) => n,
-            Err(_) => new_nan_f32(scope).into_value(),
+            // Err(_) => new_nan_f32(scope).into_value(),
+            Err(_) => unimplemented!(),
         },
-        'f' => match from_float(scope, &string, &typ_size) {
-            Ok(n) => n,
-            Err(_) => new_nan_f64(scope).into_value(),
-        },
+        // 'f' => match from_float(scope, &string, &typ_size) {
+        //     Ok(n) => n,
+        //     Err(_) => new_nan_f64(scope).into_value(),
+        // },
         // 'i'
-        _ => match from_uint(scope, &string, &typ_size) {
+        _ => match from_int(scope, &string, &typ_size) {
             Ok(n) => n,
-            Err(_) => new_nan_f32(scope).into_value(),
+            // Err(_) => new_nan_f32(scope).into_value(),
+            Err(_) => unimplemented!(),
         },
     }
 }
@@ -339,17 +350,17 @@ fn from_uint(
     })
 }
 
-#[inline]
-fn from_float(
-    scope: &Gc<Object<Scope>>,
-    value: &String,
-    typ_size: &String,
-) -> Result<Gc<Value>, ParseFloatError> {
-    Ok(match typ_size.as_str() {
-        "32" => new_f32(scope, f32::from_str(value)?).into_value(),
-        _ => new_f64(scope, f64::from_str(value)?).into_value(),
-    })
-}
+// #[inline]
+// fn from_float(
+//     scope: &Gc<Object<Scope>>,
+//     value: &String,
+//     typ_size: &String,
+// ) -> Result<Gc<Value>, ParseFloatError> {
+//     Ok(match typ_size.as_str() {
+//         "32" => new_f32(scope, f32::from_str(value)?).into_value(),
+//         _ => new_f64(scope, f64::from_str(value)?).into_value(),
+//     })
+// }
 
 #[inline]
 fn is_whitespace(ch: char) -> bool {

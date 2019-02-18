@@ -15,8 +15,6 @@ pub struct Function {
 impl Hash for Function {
     #[inline(always)]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.scope.hash(state);
         self.params.hash(state);
         self.body.hash(state);
     }

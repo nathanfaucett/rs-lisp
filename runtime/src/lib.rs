@@ -12,6 +12,7 @@ extern crate fnv;
 extern crate lisp_gc as gc;
 
 pub mod context;
+mod escape;
 mod eval;
 mod function;
 mod function_kind;
@@ -28,6 +29,7 @@ mod value;
 mod vec;
 
 pub use self::context::*;
+pub use self::escape::*;
 pub use self::eval::*;
 pub use self::function::*;
 pub use self::function_kind::*;

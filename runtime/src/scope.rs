@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
+use std::ptr;
 
 use fnv::FnvHashMap;
 use gc::Gc;
@@ -15,7 +16,7 @@ pub struct Scope {
 impl Hash for Scope {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.parent.as_ref().map(|p| p.hash(state));
+        ptr::hash(self, state);
     }
 }
 

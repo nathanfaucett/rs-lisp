@@ -1,9 +1,9 @@
 use gc::Gc;
 
 use super::{
-    def_special_form, do_special_form, fn_special_form, if_special_form, macro_special_form,
-    quote_special_form, read_special_form, unquote_special_form, Function, Keyword, Kind, List,
-    Map, Object, Scope, SpecialForm, Stack, Symbol, Value, Vec,
+    def_special_form, do_special_form, eval_special_form, expand_special_form, fn_special_form,
+    if_special_form, macro_special_form, quote_special_form, read_special_form, Escape, Function,
+    Keyword, Kind, List, Map, Object, Scope, SpecialForm, Stack, Symbol, Value, Vec,
 };
 
 #[inline]
@@ -20,10 +20,12 @@ pub fn new() -> Gc<Object<Scope>> {
         init_string(&mut scope);
         init_symbol(&mut scope);
         init_keyword(&mut scope);
+        init_escape(&mut scope);
         init_numbers(&mut scope);
         init_list(&mut scope);
         init_vec(&mut scope);
         init_map(&mut scope);
+        init_functions(&mut scope);
 
         scope
     }
@@ -37,9 +39,7 @@ where
 {
     let name_str = name.to_string();
     let name = new_symbol(&scope, name_str.clone());
-
-    let mut params = new_list(&scope);
-    params.push_back(new_symbol(&scope, "args").into_value());
+    let params = new_list(&scope);
 
     let function = new_external_function(&scope, Some(name), params, func).into_value();
     scope.set(&name_str, function);
@@ -107,11 +107,14 @@ unsafe fn init_special_form(scope: &mut Gc<Object<Scope>>) {
     let quote_function = new_special_form(scope, quote_special_form).into_value();
     scope.set("quote", quote_function);
 
-    let unquote_function = new_special_form(scope, unquote_special_form).into_value();
-    scope.set("unquote", unquote_function);
+    let eval_function = new_special_form(scope, eval_special_form).into_value();
+    scope.set("eval", eval_function);
 
     let read_function = new_special_form(scope, read_special_form).into_value();
     scope.set("read", read_function);
+
+    let expand_function = new_special_form(scope, expand_special_form).into_value();
+    scope.set("expand", expand_function);
 }
 
 #[inline]
@@ -157,6 +160,14 @@ unsafe fn init_keyword(scope: &mut Gc<Object<Scope>>) {
 
     let keyword_kind = Gc::new(Kind::new_kind::<Keyword>(type_kind, "Keyword"));
     scope.set("Keyword", keyword_kind.into_value());
+}
+
+#[inline]
+unsafe fn init_escape(scope: &mut Gc<Object<Scope>>) {
+    let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+
+    let escape_kind = Gc::new(Kind::new_kind::<Keyword>(type_kind, "Escape"));
+    scope.set("Escape", escape_kind.into_value());
 }
 
 #[inline]
@@ -217,8 +228,10 @@ unsafe fn init_list(scope: &mut Gc<Object<Scope>>) {
 unsafe fn init_vec(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
 
-    let vector_kind = Gc::new(Kind::new_kind::<Vec>(type_kind, "Vec"));
-    scope.set("Vec", vector_kind.into_value());
+    let mut vec_kind = Gc::new(Kind::new_kind::<Vec>(type_kind, "Vec"));
+    scope.set("Vec", vec_kind.clone().into_value());
+
+    Vec::init(scope, &mut vec_kind);
 }
 
 #[inline]
@@ -227,6 +240,29 @@ unsafe fn init_map(scope: &mut Gc<Object<Scope>>) {
 
     let map_kind = Gc::new(Kind::new_kind::<Map>(type_kind, "Map"));
     scope.set("Map", map_kind.into_value());
+}
+
+#[inline]
+unsafe fn init_functions(scope: &mut Gc<Object<Scope>>) {
+    add_external_function(scope, "kind-get", kind_get);
+}
+
+#[inline]
+fn kind_get(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
+    let key = args
+        .pop_front()
+        .expect("Invalid Argument provided for key")
+        .downcast::<Object<Keyword>>()
+        .expect("Invalid Argument provided for key");
+    let kind = args
+        .pop_front()
+        .expect("Invalid Argument provided for kind")
+        .downcast::<Object<Kind>>()
+        .expect("Invalid Argument provided for kind");
+
+    kind.get(&key.into_value())
+        .map(Clone::clone)
+        .unwrap_or_else(|| nil_value(&scope).into_value())
 }
 
 #[inline]
@@ -359,41 +395,41 @@ pub fn new_u64(scope: &Gc<Object<Scope>>, value: u64) -> Gc<Object<u64>> {
     unsafe { Gc::new(Object::new(u64_kind(scope), value)) }
 }
 
-#[inline]
-pub fn f32_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-    unsafe {
-        scope
-            .get_with_type::<Kind>("F32")
-            .expect("failed to get F32 Kind")
-    }
-}
-#[inline]
-pub fn new_f32(scope: &Gc<Object<Scope>>, value: f32) -> Gc<Object<f32>> {
-    unsafe { Gc::new(Object::new(f32_kind(scope), value)) }
-}
+// #[inline]
+// pub fn f32_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+//     unsafe {
+//         scope
+//             .get_with_type::<Kind>("F32")
+//             .expect("failed to get F32 Kind")
+//     }
+// }
+// #[inline]
+// pub fn new_f32(scope: &Gc<Object<Scope>>, value: f32) -> Gc<Object<f32>> {
+//     unsafe { Gc::new(Object::new(f32_kind(scope), value)) }
+// }
 
-#[inline]
-pub fn f64_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-    unsafe {
-        scope
-            .get_with_type::<Kind>("F64")
-            .expect("failed to get F64 Kind")
-    }
-}
-#[inline]
-pub fn new_f64(scope: &Gc<Object<Scope>>, value: f64) -> Gc<Object<f64>> {
-    unsafe { Gc::new(Object::new(f64_kind(scope), value)) }
-}
+// #[inline]
+// pub fn f64_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+//     unsafe {
+//         scope
+//             .get_with_type::<Kind>("F64")
+//             .expect("failed to get F64 Kind")
+//     }
+// }
+// #[inline]
+// pub fn new_f64(scope: &Gc<Object<Scope>>, value: f64) -> Gc<Object<f64>> {
+//     unsafe { Gc::new(Object::new(f64_kind(scope), value)) }
+// }
 
-#[inline]
-pub fn new_nan_f32(scope: &Gc<Object<Scope>>) -> Gc<Object<f32>> {
-    unsafe { Gc::new(Object::new(f64_kind(scope), ::std::f32::NAN)) }
-}
+// #[inline]
+// pub fn new_nan_f32(scope: &Gc<Object<Scope>>) -> Gc<Object<f32>> {
+//     unsafe { Gc::new(Object::new(f64_kind(scope), ::std::f32::NAN)) }
+// }
 
-#[inline]
-pub fn new_nan_f64(scope: &Gc<Object<Scope>>) -> Gc<Object<f64>> {
-    unsafe { Gc::new(Object::new(f64_kind(scope), ::std::f64::NAN)) }
-}
+// #[inline]
+// pub fn new_nan_f64(scope: &Gc<Object<Scope>>) -> Gc<Object<f64>> {
+//     unsafe { Gc::new(Object::new(f64_kind(scope), ::std::f64::NAN)) }
+// }
 
 #[inline]
 pub fn bool_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
@@ -493,6 +529,19 @@ where
             Keyword::new(value.to_string()),
         ))
     }
+}
+
+#[inline]
+pub fn escape_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+    unsafe {
+        scope
+            .get_with_type::<Kind>("Escape")
+            .expect("failed to get Escape Kind")
+    }
+}
+#[inline]
+pub fn new_escape(scope: &Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Object<Escape>> {
+    unsafe { Gc::new(Object::new(escape_kind(scope), Escape::new(value))) }
 }
 
 #[inline]
@@ -680,11 +729,10 @@ pub fn add_kind_method<N, F>(
     F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
 {
     let string = name.to_string();
-    let name = new_symbol(scope, string.to_string());
+    let key = new_keyword(scope, string.clone());
+    let name = new_symbol(scope, string);
+    let params = new_list(scope);
 
-    let mut params = new_list(scope);
-    params.push_back(new_symbol(scope, "list").into_value());
-
-    let value = new_external_function(scope, Some(name.clone()), params, func);
-    kind.set(name.into_value(), value.into_value());
+    let value = new_external_function(scope, Some(name), params, func);
+    kind.set(key.into_value(), value.into_value());
 }

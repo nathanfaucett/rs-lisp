@@ -1,22 +1,20 @@
 use std::collections::hash_map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
+use std::ptr;
 
 use fnv::FnvHashMap;
 use gc::Gc;
 
 use super::Value;
 
-#[derive(Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Map(FnvHashMap<Gc<Value>, Gc<Value>>);
 
 impl Hash for Map {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        for (key, value) in self.0.iter() {
-            key.hash(state);
-            value.hash(state);
-        }
+        ptr::hash(self, state)
     }
 }
 
@@ -36,36 +34,6 @@ impl fmt::Debug for Map {
         }
 
         f.write_char('}')
-    }
-}
-
-impl PartialEq for Map {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            false
-        } else {
-            for (key, value) in self {
-                if other.get(key) != Some(value) {
-                    return false;
-                }
-            }
-
-            true
-        }
-    }
-}
-
-impl Clone for Map {
-    #[inline]
-    fn clone(&self) -> Self {
-        let mut map = Self::new();
-
-        for (key, value) in self {
-            map.0.insert(key.clone(), value.clone());
-        }
-
-        map
     }
 }
 

@@ -1,56 +1,37 @@
 use std::collections::linked_list::{IntoIter, Iter, IterMut};
 use std::collections::LinkedList;
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::ptr;
 
 use gc::Gc;
 
-use super::{add_kind_method, new_bool, new_usize, Kind, Object, Scope, Value};
+use super::{add_kind_method, new_bool, new_isize, Kind, Object, Scope, Value};
 
-#[derive(Eq, Hash)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct List(LinkedList<Gc<Value>>);
+
+impl Hash for List {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        ptr::hash(self, state)
+    }
+}
 
 impl fmt::Debug for List {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut tuple = f.debug_tuple("");
-
-        for value in self.0.iter() {
-            tuple.field(value);
-        }
-
-        tuple.finish()
-    }
-}
-
-impl PartialEq for List {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            false
+        if self.is_empty() {
+            f.write_str("()")
         } else {
-            let mut a = self.0.iter();
-            let mut b = other.0.iter();
+            let mut tuple = f.debug_tuple("");
 
-            while let Some(a_value) = a.next() {
-                if Some(a_value) == b.next() {
-                    return false;
-                }
+            for value in self.0.iter() {
+                tuple.field(value);
             }
 
-            true
+            tuple.finish()
         }
-    }
-}
-
-impl Clone for List {
-    #[inline]
-    fn clone(&self) -> Self {
-        List(
-            self.0
-                .iter()
-                .map(Clone::clone)
-                .collect::<LinkedList<Gc<Value>>>(),
-        )
     }
 }
 
@@ -183,5 +164,5 @@ pub fn list_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<Value> {
         .downcast_ref::<Object<List>>()
         .expect("Failed to downcast to List");
 
-    new_usize(&scope, list.len()).into_value()
+    new_isize(&scope, list.len() as isize).into_value()
 }

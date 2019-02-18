@@ -13,8 +13,8 @@ fn main() {
 
     runtime::add_external_function(&mut scope, "println", println);
 
-    let raw = concat!("(do ", include_str!("simple.lisp"), ")");
+    let raw = concat!("(do ", include_str!("macros.lisp"), ")");
 
     let output = runtime::run(&scope, raw);
-    println!("{:?}", output);
+    println!("result {:?}", output);
 }

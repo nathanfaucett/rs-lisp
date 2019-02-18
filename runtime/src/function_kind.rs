@@ -1,5 +1,5 @@
-use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::{fmt, ptr};
 
 use gc::Gc;
 
@@ -43,9 +43,7 @@ impl Hash for FunctionKind {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
             &FunctionKind::Internal(ref body) => body.hash(state),
-            &FunctionKind::External(ref func) => {
-                (&**func as *const Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>).hash(state)
-            }
+            &FunctionKind::External(ref func) => ptr::hash(func, state),
         }
     }
 }

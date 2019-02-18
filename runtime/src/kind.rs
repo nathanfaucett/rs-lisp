@@ -1,15 +1,23 @@
-use std::mem;
+use std::hash::{Hash, Hasher};
+use std::{mem, ptr};
 
 use gc::Gc;
 
 use super::{Map, Object, Value};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Kind {
     name: String,
     size: usize,
     align: usize,
     data: Map,
+}
+
+impl Hash for Kind {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        ptr::hash(self, state)
+    }
 }
 
 impl Kind {
