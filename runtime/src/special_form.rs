@@ -114,8 +114,6 @@ pub fn def_special_form(stack: &mut Stack) {
     let key = args.pop_front().expect("failed to get key for def");
     let value = args.pop_front().expect("failed to get value for def");
 
-    println!("{:?} = {:?}", key, value);
-
     // returns nil
     stack
         .value

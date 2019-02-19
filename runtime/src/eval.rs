@@ -440,7 +440,13 @@ pub fn eval(scope: &Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                             stack.state.push_front(EvalState::Eval);
                             stack.value.push_front(escape.inner().clone());
                         } else if value.kind() == &list_kind(stack.scope.front().unwrap()) {
-                            stack.value.push_front(value);
+                            stack.value.push_front(
+                                value
+                                    .downcast::<Object<List>>()
+                                    .expect("failed to downcast expand value to List")
+                                    .clone_ref()
+                                    .into_value(),
+                            );
                             expand_special_form(&mut stack);
                         } else {
                             stack.value.push_front(value);
