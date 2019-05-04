@@ -1,21 +1,24 @@
+#![no_std]
 #![feature(arbitrary_self_types)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
-#![feature(ptr_hash)]
 
+extern crate alloc;
 extern crate num_traits;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate fnv;
+extern crate hashmap_core;
 
 extern crate lisp_gc as gc;
 
-pub mod context;
+mod builtins;
+mod context;
 mod escape;
 mod eval;
 mod function;
 mod function_kind;
+mod gc_allocator;
 mod keyword;
 mod kind;
 mod list;
@@ -33,6 +36,7 @@ pub use self::escape::*;
 pub use self::eval::*;
 pub use self::function::*;
 pub use self::function_kind::*;
+pub use self::gc_allocator::*;
 pub use self::keyword::*;
 pub use self::kind::*;
 pub use self::list::*;

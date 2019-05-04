@@ -1,7 +1,15 @@
-use std::fmt;
+use alloc::string::String;
+use core::fmt;
+
+use gc::Trace;
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(String);
+
+impl Trace for Symbol {
+    #[inline]
+    fn mark(&mut self) {}
+}
 
 impl fmt::Debug for Symbol {
     #[inline]

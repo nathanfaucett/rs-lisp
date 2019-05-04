@@ -1,7 +1,8 @@
-use std::hash::{Hash, Hasher};
-use std::{mem, ptr};
+use alloc::string::String;
+use core::hash::{Hash, Hasher};
+use core::{mem, ptr};
 
-use gc::Gc;
+use gc::{Gc, Trace};
 
 use super::{Map, Object, Value};
 
@@ -11,6 +12,13 @@ pub struct Kind {
     size: usize,
     align: usize,
     data: Map,
+}
+
+impl Trace for Kind {
+    #[inline]
+    fn mark(&mut self) {
+        self.data.mark();
+    }
 }
 
 impl Hash for Kind {
@@ -51,6 +59,19 @@ impl Kind {
             kind,
             Kind::new(name.into(), mem::size_of::<T>(), mem::align_of::<T>()),
         )
+    }
+
+    #[inline]
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    #[inline]
+    pub fn size(&self) -> usize {
+        self.size
+    }
+    #[inline]
+    pub fn align(&self) -> usize {
+        self.align
     }
 
     #[inline]

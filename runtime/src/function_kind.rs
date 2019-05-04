@@ -1,13 +1,26 @@
-use std::hash::{Hash, Hasher};
-use std::{fmt, ptr};
+use core::hash::{Hash, Hasher};
+use core::{fmt, ptr};
+use alloc::boxed::Box;
 
-use gc::Gc;
+use gc::{Gc, Trace};
 
 use super::{List, Object, Scope, Value};
 
 pub enum FunctionKind {
     Internal(Gc<Value>),
     External(Box<Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>>),
+}
+
+impl Trace for FunctionKind {
+    #[inline]
+    fn mark(&mut self) {
+        match self {
+            FunctionKind::Internal(ref mut v) => {
+                v.mark();
+            },
+            _ => {},
+        }
+    }
 }
 
 impl Eq for FunctionKind {}
@@ -21,7 +34,7 @@ impl PartialEq for FunctionKind {
                 _ => false,
             },
             &FunctionKind::External(ref func) => match other {
-                &FunctionKind::External(ref other_func) => ::std::ptr::eq(func, other_func),
+                &FunctionKind::External(ref other_func) => ::core::ptr::eq(func, other_func),
                 _ => false,
             },
         }

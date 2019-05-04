@@ -1,9 +1,10 @@
-use std::fmt::Debug;
-use std::hash::{Hash, Hasher};
-use std::ptr;
+use alloc::string::String;
+use core::fmt::Debug;
+use core::hash::{Hash, Hasher};
+use core::ptr;
 
-use fnv::FnvHashMap;
-use gc::Gc;
+use hashmap_core::fnv::FnvHashMap;
+use gc::{Gc, Trace};
 
 use super::{Object, Value};
 
@@ -53,7 +54,7 @@ impl Scope {
     #[inline]
     pub unsafe fn get_with_type<T>(&self, ident: &str) -> Option<Gc<Object<T>>>
     where
-        T: 'static + Hash + Debug + PartialEq,
+        T: 'static + Hash + Debug + PartialEq + Trace,
     {
         self.get(ident)
             .map(|value| value.clone().into_object_unchecked())
@@ -99,5 +100,18 @@ impl Scope {
         }
         self.map.insert(ident.into(), value);
         true
+    }
+}
+
+impl Trace for Scope {
+    #[inline]
+    fn mark(&mut self) {
+        if let Some(parent) = &mut self.parent {
+            parent.mark();
+        }
+
+        for (_, v) in self.map.iter_mut() {
+            v.mark();
+        }
     }
 }

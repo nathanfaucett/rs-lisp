@@ -1,10 +1,13 @@
-use gc::Gc;
+use alloc::string::{String, ToString};
 
+
+use super::builtins::init_builtins;
 use super::{
     def_special_form, do_special_form, eval_special_form, expand_special_form, fn_special_form,
     if_special_form, macro_special_form, quote_special_form, read_special_form, Escape, Function,
-    Keyword, Kind, List, Map, Object, Scope, SpecialForm, Stack, Symbol, Value, Vec,
+    GcAllocator, Keyword, Kind, List, Map, Object, Scope, SpecialForm, Stack, Symbol, Value, Vec,
 };
+use gc::Gc;
 
 #[inline]
 pub fn new() -> Gc<Object<Scope>> {
@@ -25,7 +28,10 @@ pub fn new() -> Gc<Object<Scope>> {
         init_list(&mut scope);
         init_vec(&mut scope);
         init_map(&mut scope);
-        init_functions(&mut scope);
+        init_builtins(&mut scope);
+
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.collect(&mut scope);
 
         scope
     }
@@ -47,21 +53,34 @@ where
 
 #[inline]
 unsafe fn init_root(scope: &mut Gc<Object<Scope>>) {
+    let mut gc_allocator = GcAllocator::new(scope.clone());
+
     let type_kind = Kind::new_type_kind();
-    let scope_kind = Gc::new(Kind::new_kind::<Scope>(type_kind.clone(), "Scope"));
+    let scope_kind = gc_allocator.alloc(Kind::new_kind::<Scope>(type_kind.clone(), "Scope"));
 
     scope.set_from_value(Object::new(scope_kind.clone(), Scope::new(None)));
 
-    scope.set("Type", type_kind.into_value());
+    scope.set("Type", type_kind.clone().into_value());
     scope.set("Scope", scope_kind.into_value());
+
+    gc_allocator.maintain(scope.clone());
+
+    let gc_allocator_kind =
+        gc_allocator.alloc(Kind::new_kind::<GcAllocator>(type_kind, "GcAllocator"));
+    let gc_allocator_value =
+        gc_allocator.alloc_object(gc_allocator_kind.clone(), gc_allocator.clone());
+
+    scope.set("GcAllocator", gc_allocator_kind.into_value());
+    scope.set("gc_allocator", gc_allocator_value.into_value());
 }
 
 #[inline]
 unsafe fn init_nil(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
-    let nil_kind = Gc::new(Kind::new_kind::<()>(type_kind.clone(), "Nil"));
-    let nil_value = Gc::new(Object::new(nil_kind.clone(), ()));
+    let nil_kind = gc_allocator.alloc(Kind::new_kind::<()>(type_kind.clone(), "Nil"));
+    let nil_value = gc_allocator.alloc(Object::new(nil_kind.clone(), ()));
 
     scope.set("Nil", nil_kind.into_value());
     scope.set("nil", nil_value.into_value());
@@ -70,19 +89,21 @@ unsafe fn init_nil(scope: &mut Gc<Object<Scope>>) {
 #[inline]
 unsafe fn init_function(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
     let function_kind = Kind::new_kind::<Function>(type_kind.clone(), "Function");
     let macro_kind = Kind::new_kind::<Function>(type_kind.clone(), "Macro");
 
-    scope.set("Function", Gc::new(function_kind).into_value());
-    scope.set("Macro", Gc::new(macro_kind).into_value());
+    scope.set("Function", gc_allocator.alloc(function_kind).into_value());
+    scope.set("Macro", gc_allocator.alloc(macro_kind).into_value());
 }
 
 #[inline]
 unsafe fn init_special_form(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
-    let special_form_kind = Gc::new(Kind::new_kind::<SpecialForm>(
+    let special_form_kind = gc_allocator.alloc(Kind::new_kind::<SpecialForm>(
         type_kind.clone(),
         "SpecialForm",
     ));
@@ -120,10 +141,11 @@ unsafe fn init_special_form(scope: &mut Gc<Object<Scope>>) {
 #[inline]
 unsafe fn init_bool(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
-    let boolean_kind = Gc::new(Kind::new_kind::<bool>(type_kind, "Bool"));
-    let true_value = Gc::new(Object::new(boolean_kind.clone(), true));
-    let false_value = Gc::new(Object::new(boolean_kind.clone(), false));
+    let boolean_kind = gc_allocator.alloc(Kind::new_kind::<bool>(type_kind, "Bool"));
+    let true_value = gc_allocator.alloc(Object::new(boolean_kind.clone(), true));
+    let false_value = gc_allocator.alloc(Object::new(boolean_kind.clone(), false));
 
     scope.set("Bool", boolean_kind.into_value());
     scope.set("true", true_value.into_value());
@@ -133,92 +155,99 @@ unsafe fn init_bool(scope: &mut Gc<Object<Scope>>) {
 #[inline]
 unsafe fn init_character(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
-    let character_kind = Gc::new(Kind::new_kind::<char>(type_kind, "Char"));
+    let character_kind = gc_allocator.alloc(Kind::new_kind::<char>(type_kind, "Char"));
     scope.set("Char", character_kind.into_value());
 }
 
 #[inline]
 unsafe fn init_string(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
-    let string_kind = Gc::new(Kind::new_kind::<String>(type_kind, "String"));
+    let string_kind = gc_allocator.alloc(Kind::new_kind::<String>(type_kind, "String"));
     scope.set("String", string_kind.into_value());
 }
 
 #[inline]
 unsafe fn init_symbol(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
-    let symbol_kind = Gc::new(Kind::new_kind::<Symbol>(type_kind, "Symbol"));
+    let symbol_kind = gc_allocator.alloc(Kind::new_kind::<Symbol>(type_kind, "Symbol"));
     scope.set("Symbol", symbol_kind.into_value());
 }
 
 #[inline]
 unsafe fn init_keyword(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
-    let keyword_kind = Gc::new(Kind::new_kind::<Keyword>(type_kind, "Keyword"));
+    let keyword_kind = gc_allocator.alloc(Kind::new_kind::<Keyword>(type_kind, "Keyword"));
     scope.set("Keyword", keyword_kind.into_value());
 }
 
 #[inline]
 unsafe fn init_escape(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
-    let escape_kind = Gc::new(Kind::new_kind::<Keyword>(type_kind, "Escape"));
+    let escape_kind = gc_allocator.alloc(Kind::new_kind::<Keyword>(type_kind, "Escape"));
     scope.set("Escape", escape_kind.into_value());
 }
 
 #[inline]
 unsafe fn init_numbers(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
     // Unsigned
-    let u8_kind = Gc::new(Kind::new_kind::<u8>(type_kind.clone(), "U8"));
+    let u8_kind = gc_allocator.alloc(Kind::new_kind::<u8>(type_kind.clone(), "U8"));
     scope.set("U8", u8_kind.into_value());
 
-    let u16_kind = Gc::new(Kind::new_kind::<u16>(type_kind.clone(), "U16"));
+    let u16_kind = gc_allocator.alloc(Kind::new_kind::<u16>(type_kind.clone(), "U16"));
     scope.set("U16", u16_kind.into_value());
 
-    let u32_kind = Gc::new(Kind::new_kind::<u32>(type_kind.clone(), "U32"));
+    let u32_kind = gc_allocator.alloc(Kind::new_kind::<u32>(type_kind.clone(), "U32"));
     scope.set("U32", u32_kind.into_value());
 
-    let u64_kind = Gc::new(Kind::new_kind::<u64>(type_kind.clone(), "U64"));
+    let u64_kind = gc_allocator.alloc(Kind::new_kind::<u64>(type_kind.clone(), "U64"));
     scope.set("U64", u64_kind.into_value());
 
-    let usize_kind = Gc::new(Kind::new_kind::<usize>(type_kind.clone(), "USize"));
+    let usize_kind = gc_allocator.alloc(Kind::new_kind::<usize>(type_kind.clone(), "USize"));
     scope.set("USize", usize_kind.into_value());
 
     // Signed
-    let i8_kind = Gc::new(Kind::new_kind::<i8>(type_kind.clone(), "I8"));
+    let i8_kind = gc_allocator.alloc(Kind::new_kind::<i8>(type_kind.clone(), "I8"));
     scope.set("I8", i8_kind.into_value());
 
-    let i16_kind = Gc::new(Kind::new_kind::<i16>(type_kind.clone(), "I16"));
+    let i16_kind = gc_allocator.alloc(Kind::new_kind::<i16>(type_kind.clone(), "I16"));
     scope.set("I16", i16_kind.into_value());
 
-    let i32_kind = Gc::new(Kind::new_kind::<i32>(type_kind.clone(), "I32"));
+    let i32_kind = gc_allocator.alloc(Kind::new_kind::<i32>(type_kind.clone(), "I32"));
     scope.set("I32", i32_kind.into_value());
 
-    let i64_kind = Gc::new(Kind::new_kind::<i64>(type_kind.clone(), "I64"));
+    let i64_kind = gc_allocator.alloc(Kind::new_kind::<i64>(type_kind.clone(), "I64"));
     scope.set("I64", i64_kind.into_value());
 
-    let isize_kind = Gc::new(Kind::new_kind::<isize>(type_kind.clone(), "ISize"));
+    let isize_kind = gc_allocator.alloc(Kind::new_kind::<isize>(type_kind.clone(), "ISize"));
     scope.set("ISize", isize_kind.into_value());
 
     // Float
-    let f32_kind = Gc::new(Kind::new_kind::<f32>(type_kind.clone(), "f32"));
+    let f32_kind = gc_allocator.alloc(Kind::new_kind::<f32>(type_kind.clone(), "f32"));
     scope.set("F32", f32_kind.into_value());
 
-    let f64_kind = Gc::new(Kind::new_kind::<f64>(type_kind.clone(), "f64"));
+    let f64_kind = gc_allocator.alloc(Kind::new_kind::<f64>(type_kind.clone(), "f64"));
     scope.set("F64", f64_kind.into_value());
 }
 
 #[inline]
 unsafe fn init_list(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
-    let mut list_kind = Gc::new(Kind::new_kind::<List>(type_kind, "List"));
+    let mut list_kind = gc_allocator.alloc(Kind::new_kind::<List>(type_kind, "List"));
     scope.set("List", list_kind.clone().into_value());
 
     List::init(scope, &mut list_kind);
@@ -227,8 +256,9 @@ unsafe fn init_list(scope: &mut Gc<Object<Scope>>) {
 #[inline]
 unsafe fn init_vec(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
-    let mut vec_kind = Gc::new(Kind::new_kind::<Vec>(type_kind, "Vec"));
+    let mut vec_kind = gc_allocator.alloc(Kind::new_kind::<Vec>(type_kind, "Vec"));
     scope.set("Vec", vec_kind.clone().into_value());
 
     Vec::init(scope, &mut vec_kind);
@@ -237,32 +267,10 @@ unsafe fn init_vec(scope: &mut Gc<Object<Scope>>) {
 #[inline]
 unsafe fn init_map(scope: &mut Gc<Object<Scope>>) {
     let type_kind = scope.get_with_type::<Kind>("Type").unwrap();
+    let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
 
-    let map_kind = Gc::new(Kind::new_kind::<Map>(type_kind, "Map"));
+    let map_kind = gc_allocator.alloc(Kind::new_kind::<Map>(type_kind, "Map"));
     scope.set("Map", map_kind.into_value());
-}
-
-#[inline]
-unsafe fn init_functions(scope: &mut Gc<Object<Scope>>) {
-    add_external_function(scope, "kind-get", kind_get);
-}
-
-#[inline]
-fn kind_get(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
-    let key = args
-        .pop_front()
-        .expect("Invalid Argument provided for key")
-        .downcast::<Object<Keyword>>()
-        .expect("Invalid Argument provided for key");
-    let kind = args
-        .pop_front()
-        .expect("Invalid Argument provided for kind")
-        .downcast::<Object<Kind>>()
-        .expect("Invalid Argument provided for kind");
-
-    kind.get(&key.into_value())
-        .map(Clone::clone)
-        .unwrap_or_else(|| nil_value(&scope).into_value())
 }
 
 #[inline]
@@ -275,7 +283,10 @@ pub fn usize_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_usize(scope: &Gc<Object<Scope>>, value: usize) -> Gc<Object<usize>> {
-    unsafe { Gc::new(Object::new(usize_kind(scope), value)) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(usize_kind(scope), value))
+    }
 }
 
 #[inline]
@@ -288,7 +299,10 @@ pub fn i8_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_i8(scope: &Gc<Object<Scope>>, value: i8) -> Gc<Object<i8>> {
-    unsafe { Gc::new(Object::new(i8_kind(scope), value)) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(i8_kind(scope), value))
+    }
 }
 
 #[inline]
@@ -301,7 +315,10 @@ pub fn i16_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_i16(scope: &Gc<Object<Scope>>, value: i16) -> Gc<Object<i16>> {
-    unsafe { Gc::new(Object::new(i16_kind(scope), value)) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(i16_kind(scope), value))
+    }
 }
 
 #[inline]
@@ -314,7 +331,10 @@ pub fn i32_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_i32(scope: &Gc<Object<Scope>>, value: i32) -> Gc<Object<i32>> {
-    unsafe { Gc::new(Object::new(i32_kind(scope), value)) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(i32_kind(scope), value))
+    }
 }
 
 #[inline]
@@ -327,7 +347,10 @@ pub fn i64_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_i64(scope: &Gc<Object<Scope>>, value: i64) -> Gc<Object<i64>> {
-    unsafe { Gc::new(Object::new(i64_kind(scope), value)) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(i64_kind(scope), value))
+    }
 }
 
 #[inline]
@@ -340,7 +363,10 @@ pub fn isize_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_isize(scope: &Gc<Object<Scope>>, value: isize) -> Gc<Object<isize>> {
-    unsafe { Gc::new(Object::new(isize_kind(scope), value)) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(isize_kind(scope), value))
+    }
 }
 
 #[inline]
@@ -353,7 +379,10 @@ pub fn u8_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_u8(scope: &Gc<Object<Scope>>, value: u8) -> Gc<Object<u8>> {
-    unsafe { Gc::new(Object::new(u8_kind(scope), value)) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(u8_kind(scope), value))
+    }
 }
 
 #[inline]
@@ -366,7 +395,10 @@ pub fn u16_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_u16(scope: &Gc<Object<Scope>>, value: u16) -> Gc<Object<u16>> {
-    unsafe { Gc::new(Object::new(u16_kind(scope), value)) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(u16_kind(scope), value))
+    }
 }
 
 #[inline]
@@ -379,7 +411,10 @@ pub fn u32_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_u32(scope: &Gc<Object<Scope>>, value: u32) -> Gc<Object<u32>> {
-    unsafe { Gc::new(Object::new(u32_kind(scope), value)) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(u32_kind(scope), value))
+    }
 }
 
 #[inline]
@@ -392,7 +427,10 @@ pub fn u64_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_u64(scope: &Gc<Object<Scope>>, value: u64) -> Gc<Object<u64>> {
-    unsafe { Gc::new(Object::new(u64_kind(scope), value)) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(u64_kind(scope), value))
+    }
 }
 
 // #[inline]
@@ -405,7 +443,7 @@ pub fn new_u64(scope: &Gc<Object<Scope>>, value: u64) -> Gc<Object<u64>> {
 // }
 // #[inline]
 // pub fn new_f32(scope: &Gc<Object<Scope>>, value: f32) -> Gc<Object<f32>> {
-//     unsafe { Gc::new(Object::new(f32_kind(scope), value)) }
+//     unsafe { gc_allocator.alloc(Object::new(f32_kind(scope), value)) }
 // }
 
 // #[inline]
@@ -418,17 +456,17 @@ pub fn new_u64(scope: &Gc<Object<Scope>>, value: u64) -> Gc<Object<u64>> {
 // }
 // #[inline]
 // pub fn new_f64(scope: &Gc<Object<Scope>>, value: f64) -> Gc<Object<f64>> {
-//     unsafe { Gc::new(Object::new(f64_kind(scope), value)) }
+//     unsafe { gc_allocator.alloc(Object::new(f64_kind(scope), value)) }
 // }
 
 // #[inline]
 // pub fn new_nan_f32(scope: &Gc<Object<Scope>>) -> Gc<Object<f32>> {
-//     unsafe { Gc::new(Object::new(f64_kind(scope), ::std::f32::NAN)) }
+//     unsafe { gc_allocator.alloc(Object::new(f64_kind(scope), ::core::f32::NAN)) }
 // }
 
 // #[inline]
 // pub fn new_nan_f64(scope: &Gc<Object<Scope>>) -> Gc<Object<f64>> {
-//     unsafe { Gc::new(Object::new(f64_kind(scope), ::std::f64::NAN)) }
+//     unsafe { gc_allocator.alloc(Object::new(f64_kind(scope), ::core::f64::NAN)) }
 // }
 
 #[inline]
@@ -491,7 +529,10 @@ pub fn char_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_char(scope: &Gc<Object<Scope>>, value: char) -> Gc<Object<char>> {
-    unsafe { Gc::new(Object::new(char_kind(scope), value)) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(char_kind(scope), value))
+    }
 }
 
 #[inline]
@@ -507,7 +548,10 @@ pub fn new_string<T>(scope: &Gc<Object<Scope>>, value: T) -> Gc<Object<String>>
 where
     T: ToString,
 {
-    unsafe { Gc::new(Object::new(string_kind(scope), value.to_string())) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(string_kind(scope), value.to_string()))
+    }
 }
 
 #[inline]
@@ -524,7 +568,8 @@ where
     T: ToString,
 {
     unsafe {
-        Gc::new(Object::new(
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(
             keyword_kind(scope),
             Keyword::new(value.to_string()),
         ))
@@ -541,7 +586,10 @@ pub fn escape_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_escape(scope: &Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Object<Escape>> {
-    unsafe { Gc::new(Object::new(escape_kind(scope), Escape::new(value))) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(escape_kind(scope), Escape::new(value)))
+    }
 }
 
 #[inline]
@@ -558,7 +606,8 @@ where
     T: ToString,
 {
     unsafe {
-        Gc::new(Object::new(
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(
             symbol_kind(scope),
             Symbol::new(value.to_string()),
         ))
@@ -575,7 +624,10 @@ pub fn list_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_list(scope: &Gc<Object<Scope>>) -> Gc<Object<List>> {
-    unsafe { Gc::new(Object::new(list_kind(scope), List::new())) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(list_kind(scope), List::new()))
+    }
 }
 
 #[inline]
@@ -588,7 +640,10 @@ pub fn vec_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_vec(scope: &Gc<Object<Scope>>) -> Gc<Object<Vec>> {
-    unsafe { Gc::new(Object::new(vec_kind(scope), Vec::new())) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(vec_kind(scope), Vec::new()))
+    }
 }
 
 #[inline]
@@ -601,7 +656,10 @@ pub fn map_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 }
 #[inline]
 pub fn new_map(scope: &Gc<Object<Scope>>) -> Gc<Object<Map>> {
-    unsafe { Gc::new(Object::new(map_kind(scope), Map::new())) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(map_kind(scope), Map::new()))
+    }
 }
 
 #[inline]
@@ -615,7 +673,8 @@ pub fn scope_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 #[inline]
 pub fn new_scope(scope: &Gc<Object<Scope>>) -> Gc<Object<Scope>> {
     unsafe {
-        Gc::new(Object::new(
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(
             scope_kind(scope),
             Scope::new(Some(scope.clone())),
         ))
@@ -635,7 +694,10 @@ pub fn new_special_form<F>(scope: &Gc<Object<Scope>>, f: F) -> Gc<Object<Special
 where
     F: 'static + Fn(&mut Stack),
 {
-    unsafe { Gc::new(Object::new(special_form_kind(scope), SpecialForm::new(f))) }
+    unsafe {
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(special_form_kind(scope), SpecialForm::new(f)))
+    }
 }
 
 #[inline]
@@ -654,7 +716,8 @@ pub fn new_function(
     body: Gc<Value>,
 ) -> Gc<Object<Function>> {
     unsafe {
-        Gc::new(Object::new(
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(
             function_kind(scope),
             Function::new(name, scope.clone(), params, body),
         ))
@@ -671,7 +734,8 @@ where
     F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
 {
     unsafe {
-        Gc::new(Object::new(
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(
             function_kind(scope),
             Function::new_external(name, scope.clone(), params, body),
         ))
@@ -694,7 +758,8 @@ pub fn new_macro(
     body: Gc<Value>,
 ) -> Gc<Object<Function>> {
     unsafe {
-        Gc::new(Object::new(
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(
             macro_kind(scope),
             Function::new(name, scope.clone(), params, body),
         ))
@@ -711,7 +776,8 @@ where
     F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
 {
     unsafe {
-        Gc::new(Object::new(
+        let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
+        gc_allocator.alloc(Object::new(
             macro_kind(scope),
             Function::new_external(name, scope.clone(), params, body),
         ))

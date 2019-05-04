@@ -1,20 +1,16 @@
 use core::fmt::{self, Write};
 
-use gc::{Gc, Trace};
+use gc::Gc;
 
 use super::Value;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Escape(Gc<Value>);
-
-impl Trace for Escape {
-    #[inline]
-    fn mark(&mut self) {
-        self.0.mark();
-    }
+pub struct Exception {
+  value: Gc<Value>,
+  scope: Gc<Object<List>>,
 }
 
-impl fmt::Debug for Escape {
+impl fmt::Debug for Exception {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_char('`')?;
@@ -22,17 +18,17 @@ impl fmt::Debug for Escape {
     }
 }
 
-impl Into<Gc<Value>> for Escape {
+impl Into<Gc<Value>> for Exception {
     #[inline]
     fn into(self) -> Gc<Value> {
         self.0
     }
 }
 
-impl Escape {
+impl Exception {
     #[inline]
     pub fn new(value: Gc<Value>) -> Self {
-        Escape(value)
+        Exception(value)
     }
 
     #[inline]

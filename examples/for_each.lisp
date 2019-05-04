@@ -1,12 +1,12 @@
 (def for-each (fn (vec, func) 
-  (for-each-recur 0, ((kind-get :len Vec) vec), vec, func)
+  (for-each-recur 0, ((get-kind-data Vec :len) vec), vec, func)
 ))
 
 (def for-each-recur (fn (index, len, vec, func)
   (if (= index len)
     vec
     (do
-      (func ((kind-get :nth Vec) vec, index), index)
+      (func ((get-kind-data Vec :nth) vec, index), index)
       (for-each-recur (+ index 1), len, vec, func)
     )
   )

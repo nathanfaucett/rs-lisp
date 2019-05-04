@@ -1,10 +1,10 @@
-use std::collections::linked_list::{IntoIter, Iter, IterMut};
-use std::collections::LinkedList;
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::ptr;
+use alloc::collections::linked_list::{IntoIter, Iter, IterMut};
+use alloc::collections::LinkedList;
+use core::fmt;
+use core::hash::{Hash, Hasher};
+use core::ptr;
 
-use gc::Gc;
+use gc::{Gc, Trace};
 
 use super::{add_kind_method, new_bool, new_isize, Kind, Object, Scope, Value};
 
@@ -62,6 +62,15 @@ impl<'a> IntoIterator for &'a mut List {
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter_mut()
+    }
+}
+
+impl Trace for List {
+    #[inline]
+    fn mark(&mut self) {
+        for v in self.0.iter_mut() {
+            v.mark();
+        }
     }
 }
 
@@ -125,8 +134,8 @@ impl List {
         self
     }
     #[inline]
-    pub fn to_vec(&self) -> Vec<Gc<Value>> {
-        self.0.iter().map(Clone::clone).collect::<Vec<Gc<Value>>>()
+    pub fn to_vec(&self) -> ::alloc::vec::Vec<Gc<Value>> {
+        self.0.iter().map(Clone::clone).collect::<::alloc::vec::Vec<Gc<Value>>>()
     }
 
     #[inline]

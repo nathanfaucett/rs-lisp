@@ -1,7 +1,7 @@
-use std::fmt;
-use std::hash::{Hash, Hasher};
+use core::fmt;
+use core::hash::{Hash, Hasher};
 
-use gc::Gc;
+use gc::{Gc, Trace};
 
 use super::{FunctionKind, List, Object, Scope, Symbol, Value};
 
@@ -10,6 +10,19 @@ pub struct Function {
     scope: Gc<Object<Scope>>,
     params: Gc<Object<List>>,
     body: FunctionKind,
+}
+
+impl Trace for Function {
+    #[inline]
+    fn mark(&mut self) {
+        if let Some(v) = &mut self.name {
+            v.mark();
+        }
+        self.scope.mark();
+        for v in self.params.iter_mut() {
+            v.mark();
+        }
+    }
 }
 
 impl Hash for Function {

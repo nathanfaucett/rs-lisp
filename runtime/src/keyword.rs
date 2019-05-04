@@ -1,7 +1,15 @@
-use std::fmt::{self, Write};
+use alloc::string::String;
+use core::fmt::{self, Write};
+
+use gc::Trace;
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Keyword(String);
+
+impl Trace for Keyword {
+    #[inline]
+    fn mark(&mut self) {}
+}
 
 impl fmt::Debug for Keyword {
     #[inline]

@@ -1,16 +1,25 @@
-use std::collections::LinkedList;
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::ptr;
-use std::slice::{Iter, IterMut};
-use std::vec::{self, IntoIter};
+use alloc::collections::LinkedList;
+use core::fmt;
+use core::hash::{Hash, Hasher};
+use core::ptr;
+use core::slice::{Iter, IterMut};
+use alloc::vec::{self, IntoIter};
 
-use gc::Gc;
+use gc::{Gc, Trace};
 
 use super::{add_kind_method, new_bool, new_isize, nil_value, Kind, List, Object, Scope, Value};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Vec(vec::Vec<Gc<Value>>);
+
+impl Trace for Vec {
+    #[inline]
+    fn mark(&mut self) {
+        for v in self.0.iter_mut() {
+            v.mark();
+        }
+    }
+}
 
 impl fmt::Debug for Vec {
     #[inline]

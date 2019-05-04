@@ -1,14 +1,15 @@
-use std::cmp::Ordering;
-use std::fmt::{self, Debug, Display};
-use std::hash::{Hash, Hasher};
-use std::ops::{Deref, DerefMut};
+use core::cmp::Ordering;
+use core::fmt::{self, Debug, Display};
+use core::hash::{Hash, Hasher};
+use core::ops::{Deref, DerefMut};
 
-use gc::Gc;
+use gc::{Gc, Trace};
 
 use super::{Kind, Value};
 
 #[derive(Clone)]
 pub struct Object<T> {
+    pub(crate) marked: bool,
     pub(crate) kind: Gc<Object<Kind>>,
     pub(crate) value: T,
 }
@@ -20,6 +21,7 @@ where
     #[inline(always)]
     pub fn new(kind: Gc<Object<Kind>>, value: T) -> Self {
         Object {
+            marked: false,
             kind: kind,
             value: value,
         }
@@ -55,7 +57,7 @@ impl<T> DerefMut for Object<T> {
 
 impl<T> Object<T>
 where
-    T: 'static + PartialEq + Hash + Debug,
+    T: 'static + PartialEq + Hash + Debug + Trace,
 {
     #[inline(always)]
     pub fn into_value(self: Gc<Self>) -> Gc<Value> {
@@ -65,7 +67,7 @@ where
 
 impl<T> Value for Object<T>
 where
-    T: 'static + PartialEq + Hash + Debug,
+    T: 'static + PartialEq + Hash + Debug + Trace,
 {
     #[inline(always)]
     fn kind(&self) -> &Gc<Object<Kind>> {
@@ -89,7 +91,35 @@ where
     fn hash(&self, hasher: &mut Hasher) {
         Hash::hash(self, &mut HasherMut(hasher));
     }
+
+    #[inline(always)]
+    fn mark(&mut self) {
+        Trace::mark(self);
+    }
+
+    #[inline(always)]
+    fn is_marked(&self) -> bool {
+        Trace::is_marked(self)
+    }
 }
+
+impl<T> Trace for Object<T>
+where
+    T: Trace,
+{
+    #[inline(always)]
+    fn is_marked(&self) -> bool {
+        self.marked
+    }
+    #[inline(always)]
+    fn mark(&mut self) {
+        if !self.is_marked() {
+            self.marked = true;
+            self.value.mark();
+        }
+    }
+}
+
 
 impl<T> Hash for Object<T>
 where

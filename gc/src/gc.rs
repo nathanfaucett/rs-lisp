@@ -7,6 +7,8 @@ use core::hash::{Hash, Hasher};
 use core::ops::{Deref, DerefMut};
 use core::ptr;
 
+use super::Trace;
+
 pub struct Gc<T>
 where
     T: ?Sized,
@@ -16,6 +18,15 @@ where
 
 unsafe impl<T> Send for Gc<T> {}
 unsafe impl<T> Sync for Gc<T> {}
+
+impl<T> Trace for Gc<T>
+where
+    T: Trace,
+{
+    fn mark(&mut self) {
+        self.as_mut().mark()
+    }
+}
 
 impl<T> Gc<T> {
     #[inline(always)]
@@ -95,6 +106,10 @@ where
     #[inline(always)]
     pub fn as_mut(&mut self) -> &mut T {
         unsafe { &mut *self.as_ptr() }
+    }
+    #[inline(always)]
+    pub unsafe fn unsafe_as_mut(&self) -> &mut T {
+        &mut *self.as_ptr()
     }
 }
 

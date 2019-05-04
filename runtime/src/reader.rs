@@ -1,6 +1,7 @@
-use std::num::ParseIntError;
-use std::str::FromStr;
-use std::vec;
+use core::num::ParseIntError;
+use core::str::FromStr;
+use alloc::vec;
+use alloc::string::String;
 
 use gc::Gc;
 
@@ -374,7 +375,7 @@ fn is_closer(ch: char) -> bool {
 
 #[inline]
 fn is_numeric(reader: &mut Reader, ch: char) -> bool {
-    if ch == '.' || ch.is_numeric() {
+    if ch.is_numeric() {
         return true;
     }
     if ch == '-' {

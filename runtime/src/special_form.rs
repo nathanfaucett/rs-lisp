@@ -1,7 +1,9 @@
-use std::hash::{Hash, Hasher};
-use std::{fmt, ptr};
+use alloc::string::String;
+use alloc::boxed::Box;
+use core::hash::{Hash, Hasher};
+use core::{fmt, ptr};
 
-use gc::Gc;
+use gc::{Gc, Trace};
 
 use super::{
     escape_kind, new_function, new_list, new_macro, nil_value, read_value, Escape, EvalState, List,
@@ -9,6 +11,11 @@ use super::{
 };
 
 pub struct SpecialForm(Box<Fn(&mut Stack)>);
+
+impl Trace for SpecialForm {
+    #[inline]
+    fn mark(&mut self) {}
+}
 
 impl fmt::Debug for SpecialForm {
     #[inline]
@@ -20,7 +27,7 @@ impl fmt::Debug for SpecialForm {
 impl PartialEq for SpecialForm {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        ::std::ptr::eq(self, other)
+        ::core::ptr::eq(self, other)
     }
 }
 
@@ -243,7 +250,7 @@ pub fn read_special_form(stack: &mut Stack) {
         let string = value
             .downcast::<Object<String>>()
             .expect("failed to downcast read argument to String");
-        let char_list = string.chars().collect::<::std::vec::Vec<char>>();
+        let char_list = string.chars().collect::<::alloc::vec::Vec<char>>();
         let mut reader = Reader::new(char_list);
         let value = read_value(
             stack.scope.front().expect("failed to get scope"),

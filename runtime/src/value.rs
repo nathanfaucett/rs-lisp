@@ -1,8 +1,8 @@
-use std::any::{Any, TypeId};
-use std::fmt;
-use std::hash::{Hash, Hasher};
+use core::any::{Any, TypeId};
+use core::fmt;
+use core::hash::{Hash, Hasher};
 
-use gc::Gc;
+use gc::{Gc, Trace};
 
 use super::{Kind, Object};
 
@@ -11,6 +11,8 @@ pub trait Value: Any {
     fn debug(&self, f: &mut fmt::Formatter) -> fmt::Result;
     fn equal(&self, other: &Value) -> bool;
     fn hash(&self, hasher: &mut Hasher);
+    fn mark(&mut self);
+    fn is_marked(&self) -> bool;
 }
 
 impl Value {
@@ -63,14 +65,14 @@ impl Value {
     #[inline(always)]
     pub unsafe fn into_object_unchecked<T>(self: Gc<Self>) -> Gc<Object<T>>
     where
-        T: 'static + PartialEq + Hash + fmt::Debug,
+        T: 'static + PartialEq + Hash + fmt::Debug + Trace,
     {
         self.downcast_unchecked::<Object<T>>()
     }
     #[inline(always)]
     pub fn into_object<T>(self: Gc<Self>) -> Result<Gc<Object<T>>, Gc<Self>>
     where
-        T: 'static + PartialEq + Hash + fmt::Debug,
+        T: 'static + PartialEq + Hash + fmt::Debug + Trace,
     {
         self.downcast::<Object<T>>()
     }

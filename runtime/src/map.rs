@@ -1,15 +1,27 @@
-use std::collections::hash_map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
-use std::fmt::{self, Write};
-use std::hash::{Hash, Hasher};
-use std::ptr;
+use core::fmt::{self, Write};
+use core::hash::{Hash, Hasher};
+use core::ptr;
 
-use fnv::FnvHashMap;
-use gc::Gc;
+use hashmap_core::map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
+use hashmap_core::fnv::FnvHashMap;
+use gc::{Gc, Trace};
 
 use super::Value;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Map(FnvHashMap<Gc<Value>, Gc<Value>>);
+
+impl Trace for Map {
+    #[inline]
+    fn mark(&mut self) {
+        for (k, v) in self.0.iter_mut() {
+            unsafe {
+                k.unsafe_as_mut().mark();
+            }
+            v.mark();
+        }
+    }
+}
 
 impl Hash for Map {
     #[inline]
