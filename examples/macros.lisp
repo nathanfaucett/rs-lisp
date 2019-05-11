@@ -9,5 +9,7 @@
 (def-fn add-one (a) 
   (add a, 1))
 
+(println gc_allocator)
+
 (def x (add 2, 2))
 (add-one x)

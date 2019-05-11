@@ -12,4 +12,6 @@
   )
 ))
 
+(println gc_allocator)
+
 (for-each ["Hello, world!", :keyword], println)

@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use core::fmt::Debug;
+use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
 use core::ptr;
 
@@ -8,15 +8,26 @@ use gc::Gc;
 
 use gc::Trace;
 
-use super::{Kind, Object, Value, Scope};
+use super::{add_kind_method, new_usize, Kind, List, Object, Scope, Value};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct GcAllocator {
   scope: Gc<Object<Scope>>,
   size: usize,
   max_size: usize,
   values: Vec<Gc<Value>>,
 }
+
+impl fmt::Debug for GcAllocator {
+  #[inline]
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.debug_struct("GcAllocator")
+      .field("size", &self.size)
+      .field("max_size", &self.max_size)
+      .finish()
+  }
+}
+
 
 impl Hash for GcAllocator {
   #[inline]
@@ -39,9 +50,25 @@ impl GcAllocator {
     GcAllocator {
       scope: scope,
       size: 0,
-      max_size: 1024 * 8,
+      max_size: 1024 * 1024,
       values: Vec::new(),
     }
+  }
+
+  #[inline]
+  pub(crate) unsafe fn unsafe_new() -> Self {
+    GcAllocator {
+      scope: Gc::null(),
+      size: 0,
+      max_size: 1024 * 1024,
+      values: Vec::new(),
+    }
+  }
+
+  #[inline]
+  pub(crate) unsafe fn unsafe_set_scope(&mut self, scope: Gc<Object<Scope>>) -> &mut Self {
+    self.scope = scope;
+    self
   }
 
   #[inline]
@@ -53,7 +80,7 @@ impl GcAllocator {
     self.values.push(value.into_value());
 
     if self.size > self.max_size {
-      self.collect(&mut (self.scope.clone()));
+      self.collect();
     }
 
     self
@@ -80,20 +107,45 @@ impl GcAllocator {
   }
 
   #[inline(always)]
-  pub fn collect(&mut self, scope: &mut Gc<Object<Scope>>) -> &mut Self {
-    scope.mark();
+  pub fn collect(&mut self) -> usize {
+    self.scope.mark();
 
     let mut size = 0;
+    let mut removed = Vec::new();
 
     self.values.retain(|v| {
       let marked = v.is_marked();
       if !marked {
         size += v.kind().size();
+        removed.push(v.clone());
       }
       marked
     });
+
+    for v in removed.drain(..) {
+      unsafe {
+        v.unsafe_drop();
+      }
+    }
+
     self.size -= size;
 
-    self
+    size
   }
+
+  #[inline]
+  pub(crate) fn init(scope: &Gc<Object<Scope>>, gc_allocator_kind: &mut Gc<Object<Kind>>) {
+    add_kind_method(scope, gc_allocator_kind, "collect", gc_allocator_collect);
+  }
+}
+
+#[inline]
+pub fn gc_allocator_collect(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
+  let gc_allocator = args
+    .front_mut()
+    .expect("GcAllocator is nil")
+    .downcast_mut::<Object<GcAllocator>>()
+    .expect("Failed to downcast to GcAllocator");
+
+  new_usize(&scope, gc_allocator.collect()).into_value()
 }

@@ -107,9 +107,15 @@ where
     pub fn as_mut(&mut self) -> &mut T {
         unsafe { &mut *self.as_ptr() }
     }
+
     #[inline(always)]
     pub unsafe fn unsafe_as_mut(&self) -> &mut T {
         &mut *self.as_ptr()
+    }
+
+    #[inline(always)]
+    pub unsafe fn unsafe_drop(self) {
+        Box::from_raw(self.as_ptr());
     }
 }
 

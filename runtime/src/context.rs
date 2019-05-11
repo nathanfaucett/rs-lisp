@@ -30,8 +30,10 @@ pub fn new() -> Gc<Object<Scope>> {
         init_map(&mut scope);
         init_builtins(&mut scope);
 
+        let mut gc_allocator_kind = scope.get_with_type::<Kind>("GcAllocator").unwrap();
         let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
-        gc_allocator.collect(&mut scope);
+        GcAllocator::init(&scope, &mut gc_allocator_kind);
+        gc_allocator.collect();
 
         scope
     }
@@ -53,17 +55,20 @@ where
 
 #[inline]
 unsafe fn init_root(scope: &mut Gc<Object<Scope>>) {
-    let mut gc_allocator = GcAllocator::new(scope.clone());
+    let mut gc_allocator = GcAllocator::unsafe_new();
 
     let type_kind = Kind::new_type_kind();
-    let scope_kind = gc_allocator.alloc(Kind::new_kind::<Scope>(type_kind.clone(), "Scope"));
 
+    gc_allocator.maintain(type_kind.clone());
+
+    let scope_kind = gc_allocator.alloc(Kind::new_kind::<Scope>(type_kind.clone(), "Scope"));
     scope.set_from_value(Object::new(scope_kind.clone(), Scope::new(None)));
+
+    gc_allocator.unsafe_set_scope(scope.clone());
+    gc_allocator.maintain(scope.clone());
 
     scope.set("Type", type_kind.clone().into_value());
     scope.set("Scope", scope_kind.into_value());
-
-    gc_allocator.maintain(scope.clone());
 
     let gc_allocator_kind =
         gc_allocator.alloc(Kind::new_kind::<GcAllocator>(type_kind, "GcAllocator"));

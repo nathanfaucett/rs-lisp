@@ -6,4 +6,6 @@
 (println a)
 (println b)
 
-[{:a a}, {:b b}]
+(println [{:a a}, {:b b}])
+
+(println ((get-kind-data GcAllocator :collect) gc_allocator))

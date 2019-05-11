@@ -3,9 +3,9 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::ptr;
 
-use hashmap_core::fnv::FnvHashMap;
-use gc::{Gc, Trace};
 
+use gc::{Gc, Trace};
+use hashmap_core::fnv::FnvHashMap;
 use super::{Object, Value};
 
 #[derive(Debug, Clone, Eq, PartialEq)]

@@ -1,7 +1,9 @@
-#![no_std]
+//#![no_std]
 #![feature(arbitrary_self_types)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
+
+extern crate core;
 
 extern crate alloc;
 extern crate num_traits;
