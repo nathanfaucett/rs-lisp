@@ -30,14 +30,14 @@ pub enum EvalState {
 
 #[derive(Debug)]
 pub struct Stack {
-    pub value: LinkedList<Gc<Value>>,
+    pub value: LinkedList<Gc<dyn Value>>,
     pub scope: LinkedList<Gc<Object<Scope>>>,
     pub state: LinkedList<EvalState>,
 }
 
 impl Stack {
     #[inline]
-    pub fn new(scope: Gc<Object<Scope>>, value: Gc<Value>) -> Self {
+    pub fn new(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Self {
         let mut stack = Stack {
             value: LinkedList::new(),
             scope: LinkedList::new(),
@@ -53,7 +53,7 @@ impl Stack {
 }
 
 #[derive(Debug, Hash, PartialEq, Eq)]
-struct LinkedMap(LinkedList<(Gc<Value>, Gc<Value>)>);
+struct LinkedMap(LinkedList<(Gc<dyn Value>, Gc<dyn Value>)>);
 
 impl Trace for LinkedMap {
     fn mark(&mut self) {
@@ -65,7 +65,7 @@ impl Trace for LinkedMap {
 }
 
 #[inline]
-pub fn eval(scope: &Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
+pub fn eval(scope: &Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
     let mut stack = Stack::new(scope.clone(), value);
 
     loop {
@@ -133,7 +133,7 @@ pub fn eval(scope: &Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
                                     .expect("failed to downcast value to Map")
                                     .iter()
                                     .map(|(k, v)| (k.clone(), v.clone()))
-                                    .collect::<LinkedList<(Gc<Value>, Gc<Value>)>>()),
+                                    .collect::<LinkedList<(Gc<dyn Value>, Gc<dyn Value>)>>()),
                             ))
                         };
 
@@ -484,7 +484,7 @@ pub fn eval(scope: &Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Value> {
 }
 
 #[inline]
-pub fn read<T>(scope: &Gc<Object<Scope>>, string: T) -> Gc<Value>
+pub fn read<T>(scope: &Gc<Object<Scope>>, string: T) -> Gc<dyn Value>
 where
     T: ToString,
 {
@@ -497,7 +497,7 @@ where
 }
 
 #[inline]
-pub fn run<T>(scope: &Gc<Object<Scope>>, string: T) -> Gc<Value>
+pub fn run<T>(scope: &Gc<Object<Scope>>, string: T) -> Gc<dyn Value>
 where
     T: ToString,
 {

@@ -3,7 +3,7 @@ extern crate lisp;
 use lisp::gc::Gc;
 use lisp::runtime::{self, List, Object, Scope, Value};
 
-fn mul(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
+fn mul(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
     let a = args
         .pop_front()
         .expect("failed to get a value")
@@ -18,7 +18,7 @@ fn mul(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
     runtime::new_isize(&scope, a.value() * b.value()).into_value()
 }
 
-fn sub(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
+fn sub(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
     let a = args
         .pop_front()
         .expect("failed to get a value")
@@ -33,7 +33,7 @@ fn sub(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
     runtime::new_isize(&scope, a.value() - b.value()).into_value()
 }
 
-fn eq(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
+fn eq(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
     let a = args.pop_front().expect("failed to get a value");
     let b = args.pop_front().expect("failed to get b value");
     runtime::new_bool(&scope, a.eq(&b)).into_value()

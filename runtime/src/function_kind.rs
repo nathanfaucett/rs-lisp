@@ -1,14 +1,14 @@
+use alloc::boxed::Box;
 use core::hash::{Hash, Hasher};
 use core::{fmt, ptr};
-use alloc::boxed::Box;
 
 use gc::{Gc, Trace};
 
 use super::{List, Object, Scope, Value};
 
 pub enum FunctionKind {
-    Internal(Gc<Value>),
-    External(Box<Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>>),
+    Internal(Gc<dyn Value>),
+    External(Box<dyn Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>>),
 }
 
 impl Trace for FunctionKind {
@@ -17,8 +17,8 @@ impl Trace for FunctionKind {
         match self {
             FunctionKind::Internal(ref mut v) => {
                 v.mark();
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 }
@@ -63,13 +63,13 @@ impl Hash for FunctionKind {
 
 impl FunctionKind {
     #[inline]
-    pub fn new_internal(body: Gc<Value>) -> Self {
+    pub fn new_internal(body: Gc<dyn Value>) -> Self {
         FunctionKind::Internal(body)
     }
     #[inline]
     pub fn new_external<F>(body: F) -> Self
     where
-        F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
+        F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
     {
         FunctionKind::External(Box::new(body))
     }

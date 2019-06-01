@@ -9,7 +9,7 @@ pub unsafe fn init_builtins(scope: &mut Gc<Object<Scope>>) {
 }
 
 #[inline]
-fn get_kind_data(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
+fn get_kind_data(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
     let kind = args
         .pop_front()
         .expect("Invalid Argument provided for kind")
@@ -23,7 +23,7 @@ fn get_kind_data(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Val
 }
 
 #[inline]
-fn set_kind_data(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
+fn set_kind_data(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
     let mut kind = args
         .pop_front()
         .expect("Invalid Argument provided for kind")

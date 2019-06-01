@@ -130,7 +130,7 @@ where
 
     #[inline(always)]
     pub unsafe fn downcast_ref_unchecked<V: Any>(&self) -> &V {
-        &*(self as *const Any as *const V)
+        &*(self as *const dyn Any as *const V)
     }
     #[inline]
     pub fn downcast_ref<V: Any>(&self) -> Option<&V> {
@@ -143,7 +143,7 @@ where
 
     #[inline(always)]
     pub unsafe fn downcast_mut_unchecked<V: Any>(&mut self) -> &mut V {
-        &mut *(self as *mut Any as *mut V)
+        &mut *(self as *mut dyn Any as *mut V)
     }
     #[inline]
     pub fn downcast_mut<V: Any>(&mut self) -> Option<&mut V> {
@@ -156,7 +156,7 @@ where
 
     #[inline(always)]
     pub unsafe fn downcast_unchecked<V: Any>(mut self: Gc<T>) -> Gc<V> {
-        Gc::from_raw((&mut *self) as *const Any as *mut V)
+        Gc::from_raw((&mut *self) as *const dyn Any as *mut V)
     }
     #[inline]
     pub fn downcast<V: Any>(self: Gc<T>) -> Result<Gc<V>, Gc<T>> {

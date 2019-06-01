@@ -6,7 +6,7 @@ use super::Value;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Exception {
-  value: Gc<Value>,
+  value: Gc<dyn Value>,
   scope: Gc<Object<List>>,
 }
 
@@ -18,25 +18,25 @@ impl fmt::Debug for Exception {
     }
 }
 
-impl Into<Gc<Value>> for Exception {
+impl Into<Gc<dyn Value>> for Exception {
     #[inline]
-    fn into(self) -> Gc<Value> {
+    fn into(self) -> Gc<dyn Value> {
         self.0
     }
 }
 
 impl Exception {
     #[inline]
-    pub fn new(value: Gc<Value>) -> Self {
+    pub fn new(value: Gc<dyn Value>) -> Self {
         Exception(value)
     }
 
     #[inline]
-    pub fn inner(&self) -> &Gc<Value> {
+    pub fn inner(&self) -> &Gc<dyn Value> {
         &self.0
     }
     #[inline]
-    pub fn inner_mut(&mut self) -> &mut Gc<Value> {
+    pub fn inner_mut(&mut self) -> &mut Gc<dyn Value> {
         &mut self.0
     }
 }

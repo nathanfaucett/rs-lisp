@@ -9,7 +9,7 @@ use gc::{Gc, Trace};
 use super::{add_kind_method, new_bool, new_isize, Kind, Object, Scope, Value};
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct List(LinkedList<Gc<Value>>);
+pub struct List(LinkedList<Gc<dyn Value>>);
 
 impl Hash for List {
     #[inline]
@@ -36,7 +36,7 @@ impl fmt::Debug for List {
 }
 
 impl IntoIterator for List {
-    type Item = Gc<Value>;
+    type Item = Gc<dyn Value>;
     type IntoIter = IntoIter<Self::Item>;
 
     #[inline]
@@ -46,8 +46,8 @@ impl IntoIterator for List {
 }
 
 impl<'a> IntoIterator for &'a List {
-    type Item = &'a Gc<Value>;
-    type IntoIter = Iter<'a, Gc<Value>>;
+    type Item = &'a Gc<dyn Value>;
+    type IntoIter = Iter<'a, Gc<dyn Value>>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -56,8 +56,8 @@ impl<'a> IntoIterator for &'a List {
 }
 
 impl<'a> IntoIterator for &'a mut List {
-    type Item = &'a mut Gc<Value>;
-    type IntoIter = IterMut<'a, Gc<Value>>;
+    type Item = &'a mut Gc<dyn Value>;
+    type IntoIter = IterMut<'a, Gc<dyn Value>>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -91,40 +91,40 @@ impl List {
     }
 
     #[inline]
-    pub fn push_front(&mut self, value: Gc<Value>) -> &mut Self {
+    pub fn push_front(&mut self, value: Gc<dyn Value>) -> &mut Self {
         self.0.push_front(value);
         self
     }
     #[inline]
-    pub fn push_back(&mut self, value: Gc<Value>) -> &mut Self {
+    pub fn push_back(&mut self, value: Gc<dyn Value>) -> &mut Self {
         self.0.push_back(value);
         self
     }
 
     #[inline]
-    pub fn pop_front(&mut self) -> Option<Gc<Value>> {
+    pub fn pop_front(&mut self) -> Option<Gc<dyn Value>> {
         self.0.pop_front()
     }
     #[inline]
-    pub fn pop_back(&mut self) -> Option<Gc<Value>> {
+    pub fn pop_back(&mut self) -> Option<Gc<dyn Value>> {
         self.0.pop_back()
     }
 
     #[inline]
-    pub fn front(&self) -> Option<&Gc<Value>> {
+    pub fn front(&self) -> Option<&Gc<dyn Value>> {
         self.0.front()
     }
     #[inline]
-    pub fn back(&self) -> Option<&Gc<Value>> {
+    pub fn back(&self) -> Option<&Gc<dyn Value>> {
         self.0.back()
     }
 
     #[inline]
-    pub fn front_mut(&mut self) -> Option<&mut Gc<Value>> {
+    pub fn front_mut(&mut self) -> Option<&mut Gc<dyn Value>> {
         self.0.front_mut()
     }
     #[inline]
-    pub fn back_mut(&mut self) -> Option<&mut Gc<Value>> {
+    pub fn back_mut(&mut self) -> Option<&mut Gc<dyn Value>> {
         self.0.back_mut()
     }
 
@@ -134,16 +134,16 @@ impl List {
         self
     }
     #[inline]
-    pub fn to_vec(&self) -> ::alloc::vec::Vec<Gc<Value>> {
-        self.0.iter().map(Clone::clone).collect::<::alloc::vec::Vec<Gc<Value>>>()
+    pub fn to_vec(&self) -> ::alloc::vec::Vec<Gc<dyn Value>> {
+        self.0.iter().map(Clone::clone).collect::<::alloc::vec::Vec<Gc<dyn Value>>>()
     }
 
     #[inline]
-    pub fn iter(&self) -> Iter<Gc<Value>> {
+    pub fn iter(&self) -> Iter<Gc<dyn Value>> {
         self.0.iter()
     }
     #[inline]
-    pub fn iter_mut(&mut self) -> IterMut<Gc<Value>> {
+    pub fn iter_mut(&mut self) -> IterMut<Gc<dyn Value>> {
         self.0.iter_mut()
     }
 
@@ -155,7 +155,7 @@ impl List {
 }
 
 #[inline]
-pub fn list_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<Value> {
+pub fn list_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
     let list = args
         .front()
         .expect("List is nil")
@@ -166,7 +166,7 @@ pub fn list_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<Val
 }
 
 #[inline]
-pub fn list_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<Value> {
+pub fn list_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
     let list = args
         .front()
         .expect("List is nil")

@@ -1,5 +1,5 @@
-use alloc::string::String;
 use alloc::boxed::Box;
+use alloc::string::String;
 use core::hash::{Hash, Hasher};
 use core::{fmt, ptr};
 
@@ -10,7 +10,7 @@ use super::{
     Object, Reader, Stack, Symbol, Value,
 };
 
-pub struct SpecialForm(Box<Fn(&mut Stack)>);
+pub struct SpecialForm(Box<dyn Fn(&mut Stack)>);
 
 impl Trace for SpecialForm {
     #[inline]
@@ -50,11 +50,11 @@ impl SpecialForm {
     }
 
     #[inline(always)]
-    pub fn inner(&self) -> &Fn(&mut Stack) {
+    pub fn inner(&self) -> &dyn Fn(&mut Stack) {
         &*self.0
     }
     #[inline(always)]
-    pub fn inner_mut(&mut self) -> &mut Fn(&mut Stack) {
+    pub fn inner_mut(&mut self) -> &mut dyn Fn(&mut Stack) {
         &mut *self.0
     }
 }
@@ -134,7 +134,9 @@ pub fn def_special_form(stack: &mut Stack) {
 }
 
 #[inline]
-fn build_function(stack: &mut Stack) -> (Option<Gc<Object<Symbol>>>, Gc<Object<List>>, Gc<Value>) {
+fn build_function(
+    stack: &mut Stack,
+) -> (Option<Gc<Object<Symbol>>>, Gc<Object<List>>, Gc<dyn Value>) {
     let mut args = stack
         .value
         .pop_front()

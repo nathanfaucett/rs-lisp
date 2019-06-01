@@ -43,7 +43,7 @@ pub fn new() -> Gc<Object<Scope>> {
 pub fn add_external_function<T, F>(scope: &mut Gc<Object<Scope>>, name: T, func: F)
 where
     T: ToString,
-    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
+    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
 {
     let name_str = name.to_string();
     let name = new_symbol(&scope, name_str.clone());
@@ -590,7 +590,7 @@ pub fn escape_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     }
 }
 #[inline]
-pub fn new_escape(scope: &Gc<Object<Scope>>, value: Gc<Value>) -> Gc<Object<Escape>> {
+pub fn new_escape(scope: &Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<Object<Escape>> {
     unsafe {
         let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
         gc_allocator.alloc(Object::new(escape_kind(scope), Escape::new(value)))
@@ -718,7 +718,7 @@ pub fn new_function(
     scope: &Gc<Object<Scope>>,
     name: Option<Gc<Object<Symbol>>>,
     params: Gc<Object<List>>,
-    body: Gc<Value>,
+    body: Gc<dyn Value>,
 ) -> Gc<Object<Function>> {
     unsafe {
         let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
@@ -736,7 +736,7 @@ pub fn new_external_function<F>(
     body: F,
 ) -> Gc<Object<Function>>
 where
-    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
+    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
 {
     unsafe {
         let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
@@ -760,7 +760,7 @@ pub fn new_macro(
     scope: &Gc<Object<Scope>>,
     name: Option<Gc<Object<Symbol>>>,
     params: Gc<Object<List>>,
-    body: Gc<Value>,
+    body: Gc<dyn Value>,
 ) -> Gc<Object<Function>> {
     unsafe {
         let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
@@ -778,7 +778,7 @@ pub fn new_external_macro<F>(
     body: F,
 ) -> Gc<Object<Function>>
 where
-    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
+    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
 {
     unsafe {
         let mut gc_allocator = scope.get_with_type::<GcAllocator>("gc_allocator").unwrap();
@@ -797,7 +797,7 @@ pub fn add_kind_method<N, F>(
     func: F,
 ) where
     N: ToString,
-    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
+    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
 {
     let string = name.to_string();
     let key = new_keyword(scope, string.clone());

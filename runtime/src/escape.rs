@@ -5,7 +5,7 @@ use gc::{Gc, Trace};
 use super::Value;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Escape(Gc<Value>);
+pub struct Escape(Gc<dyn Value>);
 
 impl Trace for Escape {
     #[inline]
@@ -22,25 +22,25 @@ impl fmt::Debug for Escape {
     }
 }
 
-impl Into<Gc<Value>> for Escape {
+impl Into<Gc<dyn Value>> for Escape {
     #[inline]
-    fn into(self) -> Gc<Value> {
+    fn into(self) -> Gc<dyn Value> {
         self.0
     }
 }
 
 impl Escape {
     #[inline]
-    pub fn new(value: Gc<Value>) -> Self {
+    pub fn new(value: Gc<dyn Value>) -> Self {
         Escape(value)
     }
 
     #[inline]
-    pub fn inner(&self) -> &Gc<Value> {
+    pub fn inner(&self) -> &Gc<dyn Value> {
         &self.0
     }
     #[inline]
-    pub fn inner_mut(&mut self) -> &mut Gc<Value> {
+    pub fn inner_mut(&mut self) -> &mut Gc<dyn Value> {
         &mut self.0
     }
 }

@@ -47,7 +47,7 @@ impl Reader {
 }
 
 #[inline]
-pub fn read_value(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Value> {
+pub fn read_value(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<dyn Value> {
     while let Some(ch) = reader.peek() {
         if is_whitespace(ch) {
             reader.consume();
@@ -233,7 +233,7 @@ fn read_char(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<char>>
 }
 
 #[inline]
-fn read_number(scope: &Gc<Object<Scope>>, reader: &mut Reader, ch: char) -> Gc<Value> {
+fn read_number(scope: &Gc<Object<Scope>>, reader: &mut Reader, ch: char) -> Gc<dyn Value> {
     let mut string = String::new();
 
     let mut typ_size = String::new();
@@ -326,7 +326,7 @@ fn from_int(
     scope: &Gc<Object<Scope>>,
     value: &String,
     typ_size: &String,
-) -> Result<Gc<Value>, ParseIntError> {
+) -> Result<Gc<dyn Value>, ParseIntError> {
     Ok(match typ_size.as_str() {
         "8" => new_i8(scope, i8::from_str(value)?).into_value(),
         "16" => new_i16(scope, i16::from_str(value)?).into_value(),
@@ -341,7 +341,7 @@ fn from_uint(
     scope: &Gc<Object<Scope>>,
     value: &String,
     typ_size: &String,
-) -> Result<Gc<Value>, ParseIntError> {
+) -> Result<Gc<dyn Value>, ParseIntError> {
     Ok(match typ_size.as_str() {
         "8" => new_u8(scope, u8::from_str(value)?).into_value(),
         "16" => new_u16(scope, u16::from_str(value)?).into_value(),
@@ -356,7 +356,7 @@ fn from_uint(
 //     scope: &Gc<Object<Scope>>,
 //     value: &String,
 //     typ_size: &String,
-// ) -> Result<Gc<Value>, ParseFloatError> {
+// ) -> Result<Gc<dyn Value>, ParseFloatError> {
 //     Ok(match typ_size.as_str() {
 //         "32" => new_f32(scope, f32::from_str(value)?).into_value(),
 //         _ => new_f64(scope, f64::from_str(value)?).into_value(),

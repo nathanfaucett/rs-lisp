@@ -15,7 +15,7 @@ pub struct GcAllocator {
   scope: Gc<Object<Scope>>,
   size: usize,
   max_size: usize,
-  values: Vec<Gc<Value>>,
+  values: Vec<Gc<dyn Value>>,
 }
 
 impl fmt::Debug for GcAllocator {
@@ -27,7 +27,6 @@ impl fmt::Debug for GcAllocator {
       .finish()
   }
 }
-
 
 impl Hash for GcAllocator {
   #[inline]
@@ -140,7 +139,7 @@ impl GcAllocator {
 }
 
 #[inline]
-pub fn gc_allocator_collect(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
+pub fn gc_allocator_collect(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
   let gc_allocator = args
     .front_mut()
     .expect("GcAllocator is nil")

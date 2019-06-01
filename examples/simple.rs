@@ -3,7 +3,7 @@ extern crate lisp;
 use lisp::gc::Gc;
 use lisp::runtime::{self, List, Object, Scope, Value};
 
-fn println(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<Value> {
+fn println(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
     println!("{:?}", args);
     runtime::nil_value(&scope).into_value()
 }

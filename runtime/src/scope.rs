@@ -3,15 +3,14 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::ptr;
 
-
+use super::{Object, Value};
 use gc::{Gc, Trace};
 use hashmap_core::fnv::FnvHashMap;
-use super::{Object, Value};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Scope {
     parent: Option<Gc<Object<Scope>>>,
-    map: FnvHashMap<String, Gc<Value>>,
+    map: FnvHashMap<String, Gc<dyn Value>>,
 }
 
 impl Hash for Scope {
@@ -31,7 +30,7 @@ impl Scope {
     }
 
     #[inline]
-    pub fn get(&self, ident: &str) -> Option<&Gc<Value>> {
+    pub fn get(&self, ident: &str) -> Option<&Gc<dyn Value>> {
         if let Some(value) = self.map.get(ident) {
             return Some(value);
         }
@@ -41,7 +40,7 @@ impl Scope {
         None
     }
     #[inline]
-    pub fn get_mut(&mut self, ident: &str) -> Option<&mut Gc<Value>> {
+    pub fn get_mut(&mut self, ident: &str) -> Option<&mut Gc<dyn Value>> {
         if let Some(value) = self.map.get_mut(ident) {
             return Some(value);
         }
@@ -93,7 +92,7 @@ impl Scope {
     }
 
     #[inline]
-    pub fn set(&mut self, ident: &str, value: Gc<Value>) -> bool {
+    pub fn set(&mut self, ident: &str, value: Gc<dyn Value>) -> bool {
         if let Some(scope) = self.scope_with_mut(ident) {
             scope.map.insert(ident.into(), value);
             return false;

@@ -62,7 +62,7 @@ impl Function {
         name: Option<Gc<Object<Symbol>>>,
         scope: Gc<Object<Scope>>,
         params: Gc<Object<List>>,
-        body: Gc<Value>,
+        body: Gc<dyn Value>,
     ) -> Self {
         Function {
             name: name,
@@ -80,7 +80,7 @@ impl Function {
         body: F,
     ) -> Self
     where
-        F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<Value>,
+        F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
     {
         Function {
             name: name,

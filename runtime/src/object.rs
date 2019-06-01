@@ -60,8 +60,8 @@ where
     T: 'static + PartialEq + Hash + Debug + Trace,
 {
     #[inline(always)]
-    pub fn into_value(self: Gc<Self>) -> Gc<Value> {
-        unsafe { Gc::from_raw(self.as_ptr() as *mut Value) }
+    pub fn into_value(self: Gc<Self>) -> Gc<dyn Value> {
+        unsafe { Gc::from_raw(self.as_ptr() as *mut dyn Value) }
     }
 }
 
@@ -80,7 +80,7 @@ where
     }
 
     #[inline(always)]
-    fn equal(&self, other: &Value) -> bool {
+    fn equal(&self, other: &dyn Value) -> bool {
         match other.downcast_ref::<Object<T>>() {
             Some(other) => (self.kind() == other.kind() && self.value() == other.value()),
             None => false,
@@ -88,7 +88,7 @@ where
     }
 
     #[inline(always)]
-    fn hash(&self, hasher: &mut Hasher) {
+    fn hash(&self, hasher: &mut dyn Hasher) {
         Hash::hash(self, &mut HasherMut(hasher));
     }
 
@@ -119,7 +119,6 @@ where
         }
     }
 }
-
 
 impl<T> Hash for Object<T>
 where

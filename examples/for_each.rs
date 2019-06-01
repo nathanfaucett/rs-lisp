@@ -3,7 +3,7 @@ extern crate lisp;
 use lisp::gc::Gc;
 use lisp::runtime::{self, List, Object, Scope, Value};
 
-fn add(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
+fn add(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
     let a = args
         .pop_front()
         .expect("failed to get a value")
@@ -18,13 +18,13 @@ fn add(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
     runtime::new_isize(&scope, a.value() + b.value()).into_value()
 }
 
-fn eq(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<Value> {
+fn eq(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
     let a = args.pop_front().expect("failed to get a value");
     let b = args.pop_front().expect("failed to get b value");
     runtime::new_bool(&scope, a.eq(&b)).into_value()
 }
 
-fn println(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<Value> {
+fn println(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
     println!("{:?}", args);
     runtime::nil_value(&scope).into_value()
 }
