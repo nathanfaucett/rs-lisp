@@ -8,4 +8,4 @@
 
 (println [{:a a}, {:b b}])
 
-(println ((get-kind-data GcAllocator :collect) gc_allocator))
+((get-kind-data GcAllocator :collect) gc_allocator)

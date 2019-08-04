@@ -1,7 +1,7 @@
+use alloc::string::String;
+use alloc::vec;
 use core::num::ParseIntError;
 use core::str::FromStr;
-use alloc::vec;
-use alloc::string::String;
 
 use gc::Gc;
 
@@ -80,6 +80,9 @@ pub fn read_value(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<dyn Valu
                 '`' => {
                     reader.consume();
                     return read_escape(scope, reader).into_value();
+                }
+                ';' => {
+                    return read_comment(scope, reader);
                 }
                 ch => {
                     if is_numeric(reader, ch) {
@@ -198,6 +201,19 @@ fn read_keyword(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Key
 #[inline]
 fn read_escape(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Escape>> {
     new_escape(scope, read_value(scope, reader))
+}
+
+#[inline]
+fn read_comment(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<dyn Value> {
+    while let Some(ch) = reader.peek() {
+        if ch == '\n' {
+            break;
+        } else {
+            reader.consume();
+        }
+    }
+    
+    read_value(scope, reader)
 }
 
 #[inline]

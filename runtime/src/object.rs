@@ -1,6 +1,7 @@
 use core::cmp::Ordering;
 use core::fmt::{self, Debug, Display};
 use core::hash::{Hash, Hasher};
+use core::mem;
 use core::ops::{Deref, DerefMut};
 
 use gc::{Gc, Trace};
@@ -58,11 +59,11 @@ impl<T> DerefMut for Object<T> {
 impl<T> Object<T> {
     #[inline(always)]
     pub fn as_value<'a>(self: &'a Gc<Self>) -> &'a Gc<dyn Value> {
-        unsafe { core::mem::transmute(self) }
+        unsafe { mem::transmute(self) }
     }
     #[inline(always)]
     pub fn as_value_mut<'a>(self: &'a mut Gc<Self>) -> &'a mut Gc<dyn Value> {
-        unsafe { core::mem::transmute(self) }
+        unsafe { mem::transmute(self) }
     }
 }
 

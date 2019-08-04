@@ -18,16 +18,10 @@ fn add(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
     runtime::new_isize(&scope, a.value() + b.value()).into_value()
 }
 
-fn println(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-    println!("{:?}", args);
-    runtime::nil_value(&scope).into_value()
-}
-
 fn main() {
     let mut scope = runtime::new();
 
     runtime::add_external_function(&mut scope, "+", add);
-    runtime::add_external_function(&mut scope, "println", println);
 
     let raw = concat!("(do ", include_str!("macros.lisp"), ")");
 

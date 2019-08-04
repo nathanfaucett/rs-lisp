@@ -76,18 +76,23 @@ impl GcAllocator {
   }
 
   #[inline]
-  pub unsafe fn maintain<T>(&mut self, value: Gc<Object<T>>) -> &mut Self
-  where
-    T: PartialEq + Hash + Debug + Trace + 'static,
-  {
+  pub unsafe fn maintain_value(&mut self, value: Gc<dyn Value>) -> &mut Self {
     self.size += value.kind().size();
-    self.values.push(value.into_value());
+    self.values.push(value);
 
     if self.size > self.max_size {
       self.collect();
     }
 
     self
+  }
+
+  #[inline]
+  pub unsafe fn maintain<T>(&mut self, object: Gc<Object<T>>) -> &mut Self
+  where
+    T: PartialEq + Hash + Debug + Trace + 'static,
+  {
+    self.maintain_value(object.into_value())
   }
 
   #[inline(always)]

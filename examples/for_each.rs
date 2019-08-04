@@ -24,17 +24,11 @@ fn eq(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
     runtime::new_bool(&scope, a.eq(&b)).into_value()
 }
 
-fn println(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-    println!("{:?}", args);
-    runtime::nil_value(&scope).into_value()
-}
-
 fn main() {
     let mut scope = runtime::new();
 
     runtime::add_external_function(&mut scope, "=", eq);
     runtime::add_external_function(&mut scope, "+", add);
-    runtime::add_external_function(&mut scope, "println", println);
 
     let raw = concat!("(do ", include_str!("for_each.lisp"), ")");
 

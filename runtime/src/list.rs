@@ -1,6 +1,6 @@
 use alloc::collections::linked_list::{IntoIter, Iter, IterMut};
 use alloc::collections::LinkedList;
-use core::fmt;
+use core::fmt::{self, Write};
 use core::hash::{Hash, Hasher};
 use core::ptr;
 
@@ -24,13 +24,19 @@ impl fmt::Debug for List {
         if self.is_empty() {
             f.write_str("()")
         } else {
-            let mut tuple = f.debug_tuple("");
+            f.write_char('(')?;
+            let mut index = self.len();
 
             for value in self.0.iter() {
-                tuple.field(value);
+                write!(f, "{:?}", value)?;
+
+                index -= 1;
+                if index != 0 {
+                    write!(f, ", ")?;
+                }
             }
 
-            tuple.finish()
+            f.write_char(')')
         }
     }
 }
@@ -135,7 +141,10 @@ impl List {
     }
     #[inline]
     pub fn to_vec(&self) -> ::alloc::vec::Vec<Gc<dyn Value>> {
-        self.0.iter().map(Clone::clone).collect::<::alloc::vec::Vec<Gc<dyn Value>>>()
+        self.0
+            .iter()
+            .map(Clone::clone)
+            .collect::<::alloc::vec::Vec<Gc<dyn Value>>>()
     }
 
     #[inline]

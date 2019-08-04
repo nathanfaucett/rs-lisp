@@ -5,7 +5,7 @@ use core::cmp::Ordering;
 use core::fmt::{self, Debug, Display};
 use core::hash::{Hash, Hasher};
 use core::ops::{Deref, DerefMut};
-use core::{ptr, mem};
+use core::{mem, ptr};
 
 use super::Trace;
 
@@ -46,6 +46,13 @@ impl<T> Gc<T> {
     pub unsafe fn set_from_value(&mut self, v: T) -> &mut Self {
         assert!(self.ptr.is_null());
         self.ptr = Box::into_raw(Box::new(v));
+        self
+    }
+
+    #[inline(always)]
+    pub unsafe fn set_from_ptr(&mut self, ptr: *mut T) -> &mut Self {
+        assert!(self.ptr.is_null());
+        self.ptr = ptr;
         self
     }
 
