@@ -55,6 +55,17 @@ impl<T> DerefMut for Object<T> {
     }
 }
 
+impl<T> Object<T> {
+    #[inline(always)]
+    pub fn as_value<'a>(self: &'a Gc<Self>) -> &'a Gc<dyn Value> {
+        unsafe { core::mem::transmute(self) }
+    }
+    #[inline(always)]
+    pub fn as_value_mut<'a>(self: &'a mut Gc<Self>) -> &'a mut Gc<dyn Value> {
+        unsafe { core::mem::transmute(self) }
+    }
+}
+
 impl<T> Object<T>
 where
     T: 'static + PartialEq + Hash + Debug + Trace,
@@ -105,7 +116,7 @@ where
 
 impl<T> Trace for Object<T>
 where
-    T: Trace,
+    T: 'static + Trace,
 {
     #[inline(always)]
     fn is_marked(&self) -> bool {
@@ -115,6 +126,7 @@ where
     fn mark(&mut self) {
         if !self.is_marked() {
             self.marked = true;
+            self.kind.mark();
             self.value.mark();
         }
     }

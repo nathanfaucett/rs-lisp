@@ -36,6 +36,11 @@ impl Hash for GcAllocator {
 }
 
 impl Trace for GcAllocator {
+  #[inline(always)]
+  fn is_marked(&self) -> bool {
+    true
+  }
+  #[inline(always)]
   fn mark(&mut self) {
     for v in self.values.iter_mut() {
       v.mark();

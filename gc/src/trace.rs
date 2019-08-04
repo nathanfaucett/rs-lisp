@@ -2,8 +2,8 @@ use alloc::string::String;
 
 pub trait Trace {
   #[inline(always)]
-  fn is_marked(&self) ->  bool {
-    false
+  fn is_marked(&self) -> bool {
+    true
   }
   #[inline(always)]
   fn mark(&mut self) {}

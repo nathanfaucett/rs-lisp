@@ -22,6 +22,12 @@ impl Trace for Function {
         for v in self.params.iter_mut() {
             v.mark();
         }
+        match &mut self.body {
+            &mut FunctionKind::Internal(ref mut v) => {
+                v.mark();
+            }
+            _ => {}
+        }
     }
 }
 
