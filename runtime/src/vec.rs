@@ -161,10 +161,10 @@ impl Vec {
     }
 
     #[inline]
-    pub(crate) fn init(scope: &Gc<Object<Scope>>, vec_kind: &mut Gc<Object<Kind>>) {
-        add_kind_method(scope, vec_kind, "is_empty", vec_is_empty);
-        add_kind_method(scope, vec_kind, "len", vec_len);
-        add_kind_method(scope, vec_kind, "nth", vec_nth);
+    pub(crate) fn init(scope: Gc<Object<Scope>>, vec_kind: Gc<Object<Kind>>) {
+        add_kind_method(scope.clone(), vec_kind.clone(), "is_empty", vec_is_empty);
+        add_kind_method(scope.clone(), vec_kind.clone(), "len", vec_len);
+        add_kind_method(scope.clone(), vec_kind, "nth", vec_nth);
     }
 }
 
@@ -176,7 +176,7 @@ pub fn vec_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn 
         .downcast_ref::<Object<Vec>>()
         .expect("Failed to downcast to Vec");
 
-    new_bool(&scope, vec.is_empty()).into_value()
+    new_bool(scope, vec.is_empty()).into_value()
 }
 
 #[inline]
@@ -187,7 +187,7 @@ pub fn vec_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value
         .downcast_ref::<Object<Vec>>()
         .expect("Failed to downcast to Vec");
 
-    new_isize(&scope, vec.len() as isize).into_value()
+    new_isize(scope, vec.len() as isize).into_value()
 }
 
 #[inline]
@@ -205,5 +205,5 @@ pub fn vec_nth(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn V
 
     vec.get(*nth.value() as usize)
         .map(Clone::clone)
-        .unwrap_or_else(|| nil_value(&scope).into_value())
+        .unwrap_or_else(|| nil_value(scope).into_value())
 }

@@ -143,7 +143,7 @@ impl GcAllocator {
   }
 
   #[inline]
-  pub(crate) fn init(scope: &Gc<Object<Scope>>, gc_allocator_kind: &mut Gc<Object<Kind>>) {
+  pub(crate) fn init(scope: Gc<Object<Scope>>, gc_allocator_kind: Gc<Object<Kind>>) {
     add_kind_method(scope, gc_allocator_kind, "collect", gc_allocator_collect);
   }
 }
@@ -156,5 +156,5 @@ pub fn gc_allocator_collect(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>
     .downcast_mut::<Object<GcAllocator>>()
     .expect("Failed to downcast to GcAllocator");
 
-  new_usize(&scope, gc_allocator.collect()).into_value()
+  new_usize(scope, gc_allocator.collect()).into_value()
 }

@@ -1,7 +1,9 @@
 extern crate lisp;
 
+use std::fmt::Write;
+
 use lisp::gc::Gc;
-use lisp::runtime::{self, List, Object, Scope, Value};
+use lisp::runtime::{self, nil_value, List, Object, Scope, Value};
 
 fn add(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
     let a = args
@@ -15,16 +17,35 @@ fn add(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
         .downcast::<Object<isize>>()
         .expect("failed to downcast b to isize");
 
-    runtime::new_isize(&scope, a.value() + b.value()).into_value()
+    runtime::new_isize(scope, a.value() + b.value()).into_value()
+}
+
+#[inline]
+fn println(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+    let mut string = String::new();
+    let mut index = args.value().len();
+
+    for value in args.value() {
+        write!(string, "{:?}", value).unwrap();
+
+        index -= 1;
+        if index != 0 {
+            write!(string, ", ").unwrap();
+        }
+    }
+
+    println!("{}", string);
+    nil_value(scope).into_value()
 }
 
 fn main() {
-    let mut scope = runtime::new();
+    let scope = runtime::new();
 
-    runtime::add_external_function(&mut scope, "+", add);
+    runtime::add_external_function(scope.clone(), "+", vec!["a", "b"], add);
+    runtime::add_external_function(scope.clone(), "println", vec!["...args"], println);
 
     let raw = concat!("(do ", include_str!("macros.lisp"), ")");
 
-    let output = runtime::run(&scope, raw);
+    let output = runtime::run(scope, raw);
     println!("result {:?}", output);
 }

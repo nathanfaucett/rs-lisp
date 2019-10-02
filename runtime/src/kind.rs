@@ -40,7 +40,7 @@ impl Kind {
     }
 
     #[inline(always)]
-    pub unsafe fn new_type_kind() -> Gc<Object<Kind>> {
+    pub(crate) unsafe fn new_type_kind() -> Gc<Object<Kind>> {
         let mut kind = Gc::new(Object::new(
             Gc::null(),
             Kind::new(

@@ -3,13 +3,13 @@ use core::hash::{Hash, Hasher};
 use core::ptr;
 
 use gc::{Gc, Trace};
-use hashmap_core::fnv::FnvHashMap;
-use hashmap_core::map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
+use hashbrown::hash_map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
+use hashbrown::HashMap;
 
 use super::Value;
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Map(FnvHashMap<Gc<dyn Value>, Gc<dyn Value>>);
+pub struct Map(HashMap<Gc<dyn Value>, Gc<dyn Value>>);
 
 impl Trace for Map {
     #[inline]
@@ -82,7 +82,7 @@ impl<'a> IntoIterator for &'a mut Map {
 impl Map {
     #[inline]
     pub fn new() -> Self {
-        Map(FnvHashMap::default())
+        Map(HashMap::default())
     }
 
     #[inline]

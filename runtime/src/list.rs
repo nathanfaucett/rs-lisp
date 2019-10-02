@@ -6,7 +6,7 @@ use core::ptr;
 
 use gc::{Gc, Trace};
 
-use super::{add_kind_method, new_bool, new_isize, Kind, Object, Scope, Value};
+use super::{add_external_function, new_bool, new_isize, new_scope, Kind, Object, Scope, Value};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct List(LinkedList<Gc<dyn Value>>);
@@ -157,9 +157,14 @@ impl List {
     }
 
     #[inline]
-    pub(crate) fn init(scope: &Gc<Object<Scope>>, list_kind: &mut Gc<Object<Kind>>) {
-        add_kind_method(scope, list_kind, "is_empty", list_is_empty);
-        add_kind_method(scope, list_kind, "len", list_len);
+    pub(crate) fn init_scope(mut scope: Gc<Object<Scope>>, list_kind: Gc<Object<Kind>>) {
+        let mut list_scope = new_scope(scope.clone());
+
+        scope.set("list", list_scope.clone().into_value());
+
+        list_scope.set("List", list_kind.clone().into_value());
+        add_external_function(list_scope.clone(), "is_empty", vec!["list"], list_is_empty);
+        add_external_function(list_scope, "len", vec!["list"], list_len);
     }
 }
 
@@ -171,7 +176,7 @@ pub fn list_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn
         .downcast_ref::<Object<List>>()
         .expect("Failed to downcast to List");
 
-    new_bool(&scope, list.is_empty()).into_value()
+    new_bool(scope, list.is_empty()).into_value()
 }
 
 #[inline]
@@ -182,5 +187,5 @@ pub fn list_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Valu
         .downcast_ref::<Object<List>>()
         .expect("Failed to downcast to List");
 
-    new_isize(&scope, list.len() as isize).into_value()
+    new_isize(scope, list.len() as isize).into_value()
 }

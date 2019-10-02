@@ -1,16 +1,14 @@
-//#![no_std]
+#![no_std]
 #![feature(arbitrary_self_types)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
 
-extern crate core;
-
+#[macro_use]
 extern crate alloc;
+extern crate hashbrown;
 extern crate num_traits;
 extern crate serde;
-#[macro_use]
 extern crate serde_derive;
-extern crate hashmap_core;
 
 extern crate lisp_gc as gc;
 

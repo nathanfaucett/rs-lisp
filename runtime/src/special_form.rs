@@ -101,7 +101,7 @@ pub fn if_special_form(stack: &mut Stack) {
     } else {
         stack
             .value
-            .push_front(nil_value(stack.scope.front().unwrap()).into_value());
+            .push_front(nil_value(stack.scope.front().unwrap().clone()).into_value());
     }
     stack.value.push_front(if_expr);
 
@@ -124,7 +124,7 @@ pub fn def_special_form(stack: &mut Stack) {
     // returns nil
     stack
         .value
-        .push_front(nil_value(stack.scope.front().unwrap()).into_value());
+        .push_front(nil_value(stack.scope.front().unwrap().clone()).into_value());
 
     stack.value.push_front(key);
     stack.value.push_front(value);
@@ -173,18 +173,18 @@ fn build_function(
 pub fn fn_special_form(stack: &mut Stack) {
     let (name, params, body) = build_function(stack);
 
-    stack
-        .value
-        .push_front(new_function(stack.scope.front().unwrap(), name, params, body).into_value());
+    stack.value.push_front(
+        new_function(stack.scope.front().unwrap().clone(), name, params, body).into_value(),
+    );
 }
 
 #[inline]
 pub fn macro_special_form(stack: &mut Stack) {
     let (name, params, body) = build_function(stack);
 
-    stack
-        .value
-        .push_front(new_macro(stack.scope.front().unwrap(), name, params, body).into_value());
+    stack.value.push_front(
+        new_macro(stack.scope.front().unwrap().clone(), name, params, body).into_value(),
+    );
 }
 
 #[inline]
@@ -255,7 +255,7 @@ pub fn read_special_form(stack: &mut Stack) {
         let char_list = string.chars().collect::<::alloc::vec::Vec<char>>();
         let mut reader = Reader::new(char_list);
         let value = read_value(
-            stack.scope.front().expect("failed to get scope"),
+            stack.scope.front().expect("failed to get scope").clone(),
             &mut reader,
         );
 
@@ -263,7 +263,7 @@ pub fn read_special_form(stack: &mut Stack) {
     } else {
         stack
             .value
-            .push_front(nil_value(stack.scope.front().unwrap()).into_value());
+            .push_front(nil_value(stack.scope.front().unwrap().clone()).into_value());
     }
 }
 
@@ -282,9 +282,9 @@ pub fn expand_special_form(stack: &mut Stack) {
         stack.value.push_front(list.into_value());
         stack
             .value
-            .push_front(new_list(stack.scope.front().unwrap()).into_value());
+            .push_front(new_list(stack.scope.front().unwrap().clone()).into_value());
 
-        if value.kind() == &escape_kind(stack.scope.front().unwrap()) {
+        if value.kind() == &escape_kind(stack.scope.front().unwrap().clone()) {
             let escape = value
                 .downcast::<Object<Escape>>()
                 .expect("failed to downcast expand value to Escape");

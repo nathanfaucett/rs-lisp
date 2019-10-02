@@ -47,7 +47,7 @@ impl Reader {
 }
 
 #[inline]
-pub fn read_value(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<dyn Value> {
+pub fn read_value(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<dyn Value> {
     while let Some(ch) = reader.peek() {
         if is_whitespace(ch) {
             reader.consume();
@@ -100,8 +100,8 @@ pub fn read_value(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<dyn Valu
 }
 
 #[inline]
-fn read_list(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<List>> {
-    let mut list = new_list(scope);
+fn read_list(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<List>> {
+    let mut list = new_list(scope.clone());
 
     while let Some(ch) = reader.peek() {
         if ch == ')' {
@@ -110,7 +110,7 @@ fn read_list(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<List>>
         } else if is_whitespace(ch) {
             reader.consume();
         } else {
-            list.push_back(read_value(scope, reader));
+            list.push_back(read_value(scope.clone(), reader));
         }
     }
 
@@ -118,8 +118,8 @@ fn read_list(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<List>>
 }
 
 #[inline]
-fn read_vec(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Vec>> {
-    let mut vec = new_vec(scope);
+fn read_vec(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Vec>> {
+    let mut vec = new_vec(scope.clone());
 
     while let Some(ch) = reader.peek() {
         if ch == ']' {
@@ -128,7 +128,7 @@ fn read_vec(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Vec>> {
         } else if is_whitespace(ch) {
             reader.consume();
         } else {
-            vec.push(read_value(scope, reader));
+            vec.push(read_value(scope.clone(), reader));
         }
     }
 
@@ -136,8 +136,8 @@ fn read_vec(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Vec>> {
 }
 
 #[inline]
-fn read_map(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Map>> {
-    let mut map = new_map(scope);
+fn read_map(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Map>> {
+    let mut map = new_map(scope.clone());
 
     while let Some(ch) = reader.peek() {
         if ch == '}' {
@@ -146,8 +146,8 @@ fn read_map(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Map>> {
         } else if is_whitespace(ch) {
             reader.consume();
         } else {
-            let key = read_value(scope, reader);
-            let mut value = nil_value(scope).into_value();
+            let key = read_value(scope.clone(), reader);
+            let mut value = nil_value(scope.clone()).into_value();
 
             while let Some(ch) = reader.peek() {
                 if ch == '}' {
@@ -155,7 +155,7 @@ fn read_map(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Map>> {
                 } else if is_whitespace(ch) {
                     reader.consume();
                 } else {
-                    value = read_value(scope, reader);
+                    value = read_value(scope.clone(), reader);
                 }
             }
 
@@ -167,7 +167,7 @@ fn read_map(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Map>> {
 }
 
 #[inline]
-fn read_symbol(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Symbol>> {
+fn read_symbol(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Symbol>> {
     let mut string = String::new();
 
     while let Some(ch) = reader.peek() {
@@ -183,7 +183,7 @@ fn read_symbol(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Symb
 }
 
 #[inline]
-fn read_keyword(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Keyword>> {
+fn read_keyword(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Keyword>> {
     let mut string = String::new();
 
     while let Some(ch) = reader.peek() {
@@ -199,12 +199,12 @@ fn read_keyword(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Key
 }
 
 #[inline]
-fn read_escape(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Escape>> {
-    new_escape(scope, read_value(scope, reader))
+fn read_escape(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Escape>> {
+    new_escape(scope.clone(), read_value(scope, reader))
 }
 
 #[inline]
-fn read_comment(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<dyn Value> {
+fn read_comment(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<dyn Value> {
     while let Some(ch) = reader.peek() {
         if ch == '\n' {
             break;
@@ -212,12 +212,11 @@ fn read_comment(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<dyn Value>
             reader.consume();
         }
     }
-    
     read_value(scope, reader)
 }
 
 #[inline]
-fn read_string(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<String>> {
+fn read_string(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<String>> {
     let mut string = String::new();
 
     while let Some(ch) = reader.next() {
@@ -232,7 +231,7 @@ fn read_string(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Stri
 }
 
 #[inline]
-fn read_char(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<char>> {
+fn read_char(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<char>> {
     let mut string = String::new();
 
     while let Some(ch) = reader.next() {
@@ -249,7 +248,7 @@ fn read_char(scope: &Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<char>>
 }
 
 #[inline]
-fn read_number(scope: &Gc<Object<Scope>>, reader: &mut Reader, ch: char) -> Gc<dyn Value> {
+fn read_number(scope: Gc<Object<Scope>>, reader: &mut Reader, ch: char) -> Gc<dyn Value> {
     let mut string = String::new();
 
     let mut typ_size = String::new();
@@ -339,7 +338,7 @@ fn read_number(scope: &Gc<Object<Scope>>, reader: &mut Reader, ch: char) -> Gc<d
 
 #[inline]
 fn from_int(
-    scope: &Gc<Object<Scope>>,
+    scope: Gc<Object<Scope>>,
     value: &String,
     typ_size: &String,
 ) -> Result<Gc<dyn Value>, ParseIntError> {
@@ -354,7 +353,7 @@ fn from_int(
 
 #[inline]
 fn from_uint(
-    scope: &Gc<Object<Scope>>,
+    scope: Gc<Object<Scope>>,
     value: &String,
     typ_size: &String,
 ) -> Result<Gc<dyn Value>, ParseIntError> {
@@ -369,7 +368,7 @@ fn from_uint(
 
 // #[inline]
 // fn from_float(
-//     scope: &Gc<Object<Scope>>,
+//     scope: Gc<Object<Scope>>,
 //     value: &String,
 //     typ_size: &String,
 // ) -> Result<Gc<dyn Value>, ParseFloatError> {

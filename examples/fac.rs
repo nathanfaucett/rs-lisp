@@ -15,7 +15,7 @@ fn mul(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
         .downcast::<Object<isize>>()
         .expect("failed to downcast b to isize");
 
-    runtime::new_isize(&scope, a.value() * b.value()).into_value()
+    runtime::new_isize(scope, a.value() * b.value()).into_value()
 }
 
 fn sub(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
@@ -30,24 +30,24 @@ fn sub(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
         .downcast::<Object<isize>>()
         .expect("failed to downcast b to isize");
 
-    runtime::new_isize(&scope, a.value() - b.value()).into_value()
+    runtime::new_isize(scope, a.value() - b.value()).into_value()
 }
 
 fn eq(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
     let a = args.pop_front().expect("failed to get a value");
     let b = args.pop_front().expect("failed to get b value");
-    runtime::new_bool(&scope, a.eq(&b)).into_value()
+    runtime::new_bool(scope, a.eq(&b)).into_value()
 }
 
 fn main() {
-    let mut scope = runtime::new();
+    let scope = runtime::new();
 
-    runtime::add_external_function(&mut scope, "=", eq);
-    runtime::add_external_function(&mut scope, "-", sub);
-    runtime::add_external_function(&mut scope, "*", mul);
+    runtime::add_external_function(scope.clone(), "=", vec!["a", "b"], eq);
+    runtime::add_external_function(scope.clone(), "-", vec!["a", "b"], sub);
+    runtime::add_external_function(scope.clone(), "*", vec!["a", "b"], mul);
 
     let raw = concat!("(do ", include_str!("fac.lisp"), ")");
 
-    let output = runtime::run(&scope, raw);
+    let output = runtime::run(scope, raw);
     println!("{:?}", output);
 }

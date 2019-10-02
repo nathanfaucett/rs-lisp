@@ -5,12 +5,12 @@ use core::ptr;
 
 use super::{Object, Value};
 use gc::{Gc, Trace};
-use hashmap_core::fnv::FnvHashMap;
+use hashbrown::HashMap;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Scope {
     parent: Option<Gc<Object<Scope>>>,
-    map: FnvHashMap<String, Gc<dyn Value>>,
+    map: HashMap<String, Gc<dyn Value>>,
 }
 
 impl Hash for Scope {
@@ -25,7 +25,7 @@ impl Scope {
     pub fn new(parent: Option<Gc<Object<Scope>>>) -> Self {
         Scope {
             parent: parent,
-            map: FnvHashMap::default(),
+            map: HashMap::default(),
         }
     }
 
