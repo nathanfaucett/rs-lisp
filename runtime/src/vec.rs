@@ -7,7 +7,10 @@ use core::slice::{Iter, IterMut};
 
 use gc::{Gc, Trace};
 
-use super::{add_kind_method, new_bool, new_isize, nil_value, Kind, List, Object, Scope, Value};
+use super::{
+    add_external_function, new_bool, new_isize, new_scope, nil_value, Kind, List, Object, Scope,
+    Value,
+};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Vec(vec::Vec<Gc<dyn Value>>);
@@ -161,10 +164,15 @@ impl Vec {
     }
 
     #[inline]
-    pub(crate) fn init(scope: Gc<Object<Scope>>, vec_kind: Gc<Object<Kind>>) {
-        add_kind_method(scope.clone(), vec_kind.clone(), "is_empty", vec_is_empty);
-        add_kind_method(scope.clone(), vec_kind.clone(), "len", vec_len);
-        add_kind_method(scope.clone(), vec_kind, "nth", vec_nth);
+    pub(crate) fn init_scope(mut scope: Gc<Object<Scope>>, vec_kind: Gc<Object<Kind>>) {
+        let mut vec_scope = new_scope(scope.clone());
+
+        scope.set("vec", vec_scope.clone().into_value());
+
+        vec_scope.set("Vec", vec_kind.clone().into_value());
+        add_external_function(vec_scope.clone(), "is_empty", vec!["vec"], vec_is_empty);
+        add_external_function(vec_scope.clone(), "len", vec!["vec"], vec_len);
+        add_external_function(vec_scope, "nth", vec!["vec"], vec_nth);
     }
 }
 

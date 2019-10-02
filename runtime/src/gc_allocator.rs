@@ -8,7 +8,7 @@ use gc::Gc;
 
 use gc::Trace;
 
-use super::{add_kind_method, new_usize, Kind, List, Object, Scope, Value};
+use super::{add_external_function, new_scope, new_usize, Kind, List, Object, Scope, Value};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct GcAllocator {
@@ -143,8 +143,18 @@ impl GcAllocator {
   }
 
   #[inline]
-  pub(crate) fn init(scope: Gc<Object<Scope>>, gc_allocator_kind: Gc<Object<Kind>>) {
-    add_kind_method(scope, gc_allocator_kind, "collect", gc_allocator_collect);
+  pub(crate) fn init_scope(mut scope: Gc<Object<Scope>>, gc_allocator_kind: Gc<Object<Kind>>) {
+    let mut gc_allocator_scope = new_scope(scope.clone());
+
+    scope.set("gc_allocator", gc_allocator_scope.clone().into_value());
+
+    gc_allocator_scope.set("GcAllocator", gc_allocator_kind.into_value());
+    add_external_function(
+      gc_allocator_scope,
+      "collect",
+      vec!["gc_allocator"],
+      gc_allocator_collect,
+    );
   }
 }
 

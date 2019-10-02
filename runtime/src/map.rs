@@ -6,7 +6,10 @@ use gc::{Gc, Trace};
 use hashbrown::hash_map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
 use hashbrown::HashMap;
 
-use super::Value;
+use super::{
+    add_external_function, new_bool, new_scope, new_usize, nil_value, Kind, List, Object, Scope,
+    Value,
+};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Map(HashMap<Gc<dyn Value>, Gc<dyn Value>>);
@@ -131,4 +134,76 @@ impl Map {
     pub fn iter_mut(&mut self) -> IterMut<Gc<dyn Value>, Gc<dyn Value>> {
         self.0.iter_mut()
     }
+
+    #[inline]
+    pub(crate) fn init_scope(mut scope: Gc<Object<Scope>>, vec_kind: Gc<Object<Kind>>) {
+        let mut map_scope = new_scope(scope.clone());
+
+        scope.set("map", map_scope.clone().into_value());
+
+        map_scope.set("Map", vec_kind.clone().into_value());
+        add_external_function(map_scope.clone(), "is_empty", vec!["map"], map_is_empty);
+        add_external_function(map_scope.clone(), "len", vec!["map"], map_len);
+        add_external_function(map_scope.clone(), "get", vec!["map", "key"], map_get);
+        add_external_function(
+            map_scope.clone(),
+            "set",
+            vec!["map", "key", "value"],
+            map_set,
+        );
+    }
+}
+
+#[inline]
+pub fn map_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+    let map = args
+        .front()
+        .expect("Map is nil")
+        .downcast_ref::<Object<Map>>()
+        .expect("Failed to downcast to Map");
+
+    new_bool(scope, map.is_empty()).into_value()
+}
+
+#[inline]
+pub fn map_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+    let map = args
+        .front()
+        .expect("Map is nil")
+        .downcast_ref::<Object<Map>>()
+        .expect("Failed to downcast to Map");
+
+    new_usize(scope, map.len()).into_value()
+}
+
+#[inline]
+pub fn map_get(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+    let mut mut_args = args.clone();
+    let map = mut_args
+        .pop_front()
+        .expect("Map is nil")
+        .downcast::<Object<Map>>()
+        .expect("Failed to downcast to Map");
+    let key = mut_args.pop_front().expect("key is nil");
+
+    map.get(&key)
+        .map(Clone::clone)
+        .unwrap_or(nil_value(scope).into_value())
+}
+
+#[inline]
+pub fn map_set(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+    let mut mut_args = args.clone();
+    let mut map = mut_args
+        .pop_front()
+        .expect("Map is nil")
+        .downcast::<Object<Map>>()
+        .expect("Failed to downcast to Map");
+    let key = mut_args.pop_front().expect("key is nil");
+    let value = mut_args
+        .pop_front()
+        .unwrap_or(nil_value(scope).into_value());
+
+    map.set(key, value);
+    map.into_value()
 }

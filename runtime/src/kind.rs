@@ -4,21 +4,18 @@ use core::{mem, ptr};
 
 use gc::{Gc, Trace};
 
-use super::{Map, Object, Value};
+use super::Object;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Kind {
     name: String,
     size: usize,
     align: usize,
-    data: Map,
 }
 
 impl Trace for Kind {
     #[inline]
-    fn mark(&mut self) {
-        self.data.mark();
-    }
+    fn mark(&mut self) {}
 }
 
 impl Hash for Kind {
@@ -35,7 +32,6 @@ impl Kind {
             name: name,
             size: size,
             align: align,
-            data: Map::new(),
         }
     }
 
@@ -72,21 +68,5 @@ impl Kind {
     #[inline]
     pub fn align(&self) -> usize {
         self.align
-    }
-
-    #[inline]
-    pub fn get(&self, key: &Gc<dyn Value>) -> Option<&Gc<dyn Value>> {
-        self.data.get(key)
-    }
-
-    #[inline]
-    pub fn get_mut(&mut self, key: &Gc<dyn Value>) -> Option<&mut Gc<dyn Value>> {
-        self.data.get_mut(key)
-    }
-
-    #[inline]
-    pub fn set(&mut self, key: Gc<dyn Value>, value: Gc<dyn Value>) -> &mut Self {
-        self.data.set(key, value);
-        self
     }
 }

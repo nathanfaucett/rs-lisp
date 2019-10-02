@@ -12,7 +12,6 @@ extern crate serde_derive;
 
 extern crate lisp_gc as gc;
 
-mod builtins;
 mod context;
 mod escape;
 mod eval;
