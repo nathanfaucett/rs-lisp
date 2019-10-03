@@ -7,29 +7,29 @@ use lisp::runtime::{self, add_external_function, nil_value, List, Object, Scope,
 
 #[inline]
 fn println(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-    let mut string = String::new();
-    let mut index = args.value().len();
+  let mut string = String::new();
+  let mut index = args.value().len();
 
-    for value in args.value() {
-        write!(string, "{:?}", value).unwrap();
+  for value in args.value() {
+    write!(string, "{:?}", value).unwrap();
 
-        index -= 1;
-        if index != 0 {
-            write!(string, ", ").unwrap();
-        }
+    index -= 1;
+    if index != 0 {
+      write!(string, ", ").unwrap();
     }
+  }
 
-    println!("{}", string);
-    nil_value(scope).into_value()
+  println!("{}", string);
+  nil_value(scope).into_value()
 }
 
 fn main() {
-    let scope = runtime::new();
+  let scope = runtime::new();
 
-    add_external_function(scope.clone(), "println", vec!["...args"], println);
+  add_external_function(scope.clone(), "println", vec!["...args"], println);
 
-    let raw = concat!("(do ", include_str!("simple.lisp"), ")");
+  let raw = concat!("(do ", include_str!("simple.lisp"), ")");
 
-    let output = runtime::run(scope, raw);
-    println!("{:?}", output);
+  let output = runtime::run(scope, raw);
+  println!("{:?}", output);
 }

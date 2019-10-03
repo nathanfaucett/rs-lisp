@@ -8,4 +8,4 @@
 
 (println [{:a a}, {:b b}])
 
-(gc_allocator.collect default_gc_allocator)
+((scope_get gc_allocator "collect") default_gc_allocator)

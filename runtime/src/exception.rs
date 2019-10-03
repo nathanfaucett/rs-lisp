@@ -11,32 +11,32 @@ pub struct Exception {
 }
 
 impl fmt::Debug for Exception {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_char('`')?;
-        write!(f, "{:?}", &self.0)
-    }
+  #[inline]
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.write_char('`')?;
+    write!(f, "{:?}", &self.0)
+  }
 }
 
 impl Into<Gc<dyn Value>> for Exception {
-    #[inline]
-    fn into(self) -> Gc<dyn Value> {
-        self.0
-    }
+  #[inline]
+  fn into(self) -> Gc<dyn Value> {
+    self.0
+  }
 }
 
 impl Exception {
-    #[inline]
-    pub fn new(value: Gc<dyn Value>) -> Self {
-        Exception(value)
-    }
+  #[inline]
+  pub fn new(value: Gc<dyn Value>) -> Self {
+    Exception(value)
+  }
 
-    #[inline]
-    pub fn inner(&self) -> &Gc<dyn Value> {
-        &self.0
-    }
-    #[inline]
-    pub fn inner_mut(&mut self) -> &mut Gc<dyn Value> {
-        &mut self.0
-    }
+  #[inline]
+  pub fn inner(&self) -> &Gc<dyn Value> {
+    &self.0
+  }
+  #[inline]
+  pub fn inner_mut(&mut self) -> &mut Gc<dyn Value> {
+    &mut self.0
+  }
 }
