@@ -6,7 +6,7 @@ authors = ["Nathan Faucett <nathanfaucett@gmail.com>"]
 keywords = ["lisp"]
 categories = []
 
-description = "an evaluable lisp"
+description = "a lisp"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://gitlab.com/nathanfaucett/rs-lisp.git"
@@ -17,6 +17,7 @@ name = "lisp"
 path = "src/lib.rs"
 
 [dependencies]
+clap = { version = "2.33", features = ["yaml"] }
 lisp-gc = { version = "0.1", path = "./gc" }
 lisp-runtime = { version = "0.1", path = "./runtime" }
 

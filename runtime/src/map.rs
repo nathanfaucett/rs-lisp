@@ -146,11 +146,41 @@ impl Map {
     scope.set("map", map_scope.clone().into_value());
 
     map_scope.set("Map", vec_kind.clone().into_value());
-    add_external_function(map_scope.clone(), "is_empty", vec!["map"], map_is_empty);
-    add_external_function(map_scope.clone(), "len", vec!["map"], map_len);
-    add_external_function(map_scope.clone(), "get", vec!["map", "key"], map_get);
-    add_external_function(map_scope.clone(), "has", vec!["map", "key"], map_has);
-    add_external_function(map_scope, "set", vec!["map", "key", "value"], map_set);
+    add_external_function(
+      map_scope.clone(),
+      map_scope.clone(),
+      "is_empty",
+      vec!["map"],
+      map_is_empty,
+    );
+    add_external_function(
+      map_scope.clone(),
+      map_scope.clone(),
+      "len",
+      vec!["map"],
+      map_len,
+    );
+    add_external_function(
+      map_scope.clone(),
+      map_scope.clone(),
+      "get",
+      vec!["map", "key"],
+      map_get,
+    );
+    add_external_function(
+      map_scope.clone(),
+      map_scope.clone(),
+      "has",
+      vec!["map", "key"],
+      map_has,
+    );
+    add_external_function(
+      map_scope.clone(),
+      map_scope,
+      "set",
+      vec!["map", "key", "value"],
+      map_set,
+    );
   }
 }
 

@@ -39,10 +39,16 @@ fn println(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
 }
 
 fn main() {
-  let scope = runtime::new();
+  let scope = runtime::new_context();
 
-  runtime::add_external_function(scope.clone(), "+", vec!["a", "b"], add);
-  runtime::add_external_function(scope.clone(), "println", vec!["...args"], println);
+  runtime::add_external_function(scope.clone(), scope.clone(), "+", vec!["a", "b"], add);
+  runtime::add_external_function(
+    scope.clone(),
+    scope.clone(),
+    "println",
+    vec!["...args"],
+    println,
+  );
 
   let raw = concat!("(do ", include_str!("macros.lisp"), ")");
 

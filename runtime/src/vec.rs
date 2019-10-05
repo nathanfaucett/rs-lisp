@@ -171,9 +171,27 @@ impl Vec {
     scope.set("vec", vec_scope.clone().into_value());
 
     vec_scope.set("Vec", vec_kind.clone().into_value());
-    add_external_function(vec_scope.clone(), "is_empty", vec!["vec"], vec_is_empty);
-    add_external_function(vec_scope.clone(), "len", vec!["vec"], vec_len);
-    add_external_function(vec_scope, "nth", vec!["vec", "index"], vec_nth);
+    add_external_function(
+      vec_scope.clone(),
+      vec_scope.clone(),
+      "is_empty",
+      vec!["vec"],
+      vec_is_empty,
+    );
+    add_external_function(
+      vec_scope.clone(),
+      vec_scope.clone(),
+      "len",
+      vec!["vec"],
+      vec_len,
+    );
+    add_external_function(
+      vec_scope.clone(),
+      vec_scope,
+      "nth",
+      vec!["vec", "index"],
+      vec_nth,
+    );
   }
 }
 

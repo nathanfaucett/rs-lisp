@@ -43,6 +43,23 @@ impl Scope {
   }
 
   #[inline]
+  pub fn parent(&self) -> Option<&Gc<Object<Scope>>> {
+    self.parent.as_ref()
+  }
+
+  #[inline]
+  pub fn depth(&self) -> usize {
+    let mut parent = self.parent.as_ref();
+    let mut count = 0;
+
+    while let Some(p) = parent {
+      parent = p.parent.as_ref();
+      count += 1;
+    }
+    count
+  }
+
+  #[inline]
   pub fn get(&self, ident: &str) -> Option<&Gc<dyn Value>> {
     if let Some(value) = self.map.get(ident) {
       return Some(value);
@@ -127,11 +144,35 @@ impl Scope {
     scope.set("scope", scope_scope.clone().into_value());
 
     scope_scope.set("Scope", scope_kind.clone().into_value());
-    add_external_function(scope_scope.clone(), "get", vec!["scope", "key"], scope_get);
-    add_external_function(scope_scope.clone(), "has", vec!["scope", "key"], scope_has);
-    add_external_function(scope_scope, "set", vec!["scope", "key", "value"], scope_set);
+    add_external_function(
+      scope_scope.clone(),
+      scope_scope.clone(),
+      "get",
+      vec!["scope", "key"],
+      scope_get,
+    );
+    add_external_function(
+      scope_scope.clone(),
+      scope_scope.clone(),
+      "has",
+      vec!["scope", "key"],
+      scope_has,
+    );
+    add_external_function(
+      scope_scope.clone(),
+      scope_scope,
+      "set",
+      vec!["scope", "key", "value"],
+      scope_set,
+    );
 
-    add_external_function(scope, "scope_get", vec!["scope", "key"], scope_get);
+    add_external_function(
+      scope.clone(),
+      scope,
+      "scope_get",
+      vec!["scope", "key"],
+      scope_get,
+    );
   }
 }
 

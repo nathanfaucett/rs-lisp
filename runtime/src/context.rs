@@ -11,7 +11,7 @@ use super::{
 use gc::{Gc, Trace};
 
 #[inline]
-pub fn new() -> Gc<Object<Scope>> {
+pub fn new_context() -> Gc<Object<Scope>> {
   unsafe {
     let mut scope = init_root_scope();
 
@@ -742,6 +742,7 @@ where
 #[inline]
 pub fn add_external_function<F, N>(
   mut scope: Gc<Object<Scope>>,
+  function_scope: Gc<Object<Scope>>,
   name: N,
   params: ::alloc::vec::Vec<N>,
   body: F,
@@ -757,7 +758,7 @@ where
   }
 
   let function = new_external_function(
-    scope.clone(),
+    function_scope,
     Some(new_symbol(scope.clone(), name.to_string())),
     list,
     body,
@@ -806,4 +807,32 @@ where
       Function::new_external(name, scope, params, body),
     ),
   )
+}
+
+#[inline]
+pub fn add_external_macro<F, N>(
+  mut scope: Gc<Object<Scope>>,
+  function_scope: Gc<Object<Scope>>,
+  name: N,
+  params: ::alloc::vec::Vec<N>,
+  body: F,
+) -> Gc<Object<Function>>
+where
+  F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
+  N: ToString,
+{
+  let mut list = new_list(scope.clone());
+
+  for param in params {
+    list.push_back(new_symbol(scope.clone(), param).into_value());
+  }
+
+  let function = new_external_macro(
+    function_scope,
+    Some(new_symbol(scope.clone(), name.to_string())),
+    list,
+    body,
+  );
+  scope.set(&(name.to_string()), function.clone().into_value());
+  function
 }

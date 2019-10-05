@@ -150,6 +150,7 @@ impl GcAllocator {
 
     gc_allocator_scope.set("GcAllocator", gc_allocator_kind.into_value());
     add_external_function(
+      gc_allocator_scope.clone(),
       gc_allocator_scope,
       "collect",
       vec!["gc_allocator"],

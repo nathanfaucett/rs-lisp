@@ -164,8 +164,20 @@ impl List {
     scope.set("list", list_scope.clone().into_value());
 
     list_scope.set("List", list_kind.clone().into_value());
-    add_external_function(list_scope.clone(), "is_empty", vec!["list"], list_is_empty);
-    add_external_function(list_scope, "len", vec!["list"], list_len);
+    add_external_function(
+      list_scope.clone(),
+      list_scope.clone(),
+      "is_empty",
+      vec!["list"],
+      list_is_empty,
+    );
+    add_external_function(
+      list_scope.clone(),
+      list_scope,
+      "len",
+      vec!["list"],
+      list_len,
+    );
   }
 }
 
