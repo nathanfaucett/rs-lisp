@@ -42,9 +42,9 @@ fn eq(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
 fn main() {
   let scope = runtime::new_context();
 
-  runtime::add_external_function(scope.clone(), scope.clone(), "=", vec!["a", "b"], eq);
-  runtime::add_external_function(scope.clone(), scope.clone(), "-", vec!["a", "b"], sub);
-  runtime::add_external_function(scope.clone(), scope.clone(), "*", vec!["a", "b"], mul);
+  runtime::add_external_function(scope.clone(), "=", vec!["a", "b"], eq);
+  runtime::add_external_function(scope.clone(), "-", vec!["a", "b"], sub);
+  runtime::add_external_function(scope.clone(), "*", vec!["a", "b"], mul);
 
   let raw = concat!("(do ", include_str!("fac.lisp"), ")");
 

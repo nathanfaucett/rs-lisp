@@ -8,6 +8,29 @@ use runtime::{
   nil_value, List, Map, Object, Scope, Symbol, Value,
 };
 
+pub struct Lisp {
+  scope: Gc<Object<Scope>>,
+}
+
+impl Lisp {
+  #[inline]
+  pub fn new() -> Self {
+    let mut scope = new_context();
+
+    add_external_function(scope.clone(), "println", vec!["...args"], println);
+    let module_cache = new_map(scope.clone()).into_value();
+    scope.set("_module_cache", module_cache);
+
+    Lisp { scope }
+  }
+
+  #[inline]
+  pub fn run(&self, filename_path: &Path) -> Gc<dyn Value> {
+    add_module_scope(self.scope.clone(), filename_path);
+    run_in_scope(self.scope.clone(), filename_path)
+  }
+}
+
 #[inline]
 fn println(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
   let mut string = String::new();
@@ -140,7 +163,7 @@ fn export(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
 }
 
 #[inline]
-fn add_module_scope(mut scope: Gc<Object<Scope>>, filename: &Path) -> Gc<Object<Map>> {
+fn add_module_scope(mut scope: Gc<Object<Scope>>, filename_path: &Path) -> Gc<Object<Map>> {
   let mut module = new_map(scope.clone());
 
   scope.set("module", module.clone().into_value());
@@ -149,7 +172,7 @@ fn add_module_scope(mut scope: Gc<Object<Scope>>, filename: &Path) -> Gc<Object<
     new_string(scope.clone(), "dirname").into_value(),
     new_string(
       scope.clone(),
-      filename
+      filename_path
         .parent()
         .unwrap_or(Path::new(""))
         .to_str()
@@ -159,7 +182,7 @@ fn add_module_scope(mut scope: Gc<Object<Scope>>, filename: &Path) -> Gc<Object<
   );
   module.set(
     new_string(scope.clone(), "filename").into_value(),
-    new_string(scope.clone(), filename.to_str().unwrap_or("")).into_value(),
+    new_string(scope.clone(), filename_path.to_str().unwrap_or("")).into_value(),
   );
   module.set(
     new_string(scope.clone(), "exports").into_value(),
@@ -168,50 +191,22 @@ fn add_module_scope(mut scope: Gc<Object<Scope>>, filename: &Path) -> Gc<Object<
 
   add_external_macro(
     scope.clone(),
-    scope.clone(),
     "import",
     vec!["...imports", "module_path"],
     import,
   );
-  add_external_macro(
-    scope.clone(),
-    scope.clone(),
-    "export",
-    vec!["...exports"],
-    export,
-  );
+  add_external_macro(scope.clone(), "export", vec!["...exports"], export);
 
   module
 }
 
 #[inline]
-fn run_in_scope(scope: Gc<Object<Scope>>, filename: &Path) -> Gc<dyn Value> {
+fn run_in_scope(scope: Gc<Object<Scope>>, filename_path: &Path) -> Gc<dyn Value> {
   let mut raw = String::new();
   raw.push_str("(do ");
-  raw.push_str(&fs::read_to_string(filename).expect(&format!("No such file {:?}", filename)));
+  raw.push_str(
+    &fs::read_to_string(filename_path).expect(&format!("No such file {:?}", filename_path)),
+  );
   raw.push(')');
   runtime::run(scope, raw)
-}
-
-#[inline]
-fn init(filename: &Path) -> Gc<Object<Scope>> {
-  let mut scope = new_context();
-
-  add_external_function(
-    scope.clone(),
-    scope.clone(),
-    "println",
-    vec!["...args"],
-    println,
-  );
-  let module_cache = new_map(scope.clone()).into_value();
-  scope.set("_module_cache", module_cache);
-  add_module_scope(scope.clone(), filename);
-
-  scope
-}
-
-#[inline]
-pub fn run(filename: &Path) {
-  println!("{:?}", run_in_scope(init(filename), filename));
 }

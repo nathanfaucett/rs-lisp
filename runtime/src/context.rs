@@ -742,7 +742,6 @@ where
 #[inline]
 pub fn add_external_function<F, N>(
   mut scope: Gc<Object<Scope>>,
-  function_scope: Gc<Object<Scope>>,
   name: N,
   params: ::alloc::vec::Vec<N>,
   body: F,
@@ -758,7 +757,7 @@ where
   }
 
   let function = new_external_function(
-    function_scope,
+    scope.clone(),
     Some(new_symbol(scope.clone(), name.to_string())),
     list,
     body,
@@ -812,7 +811,6 @@ where
 #[inline]
 pub fn add_external_macro<F, N>(
   mut scope: Gc<Object<Scope>>,
-  function_scope: Gc<Object<Scope>>,
   name: N,
   params: ::alloc::vec::Vec<N>,
   body: F,
@@ -828,7 +826,7 @@ where
   }
 
   let function = new_external_macro(
-    function_scope,
+    scope.clone(),
     Some(new_symbol(scope.clone(), name.to_string())),
     list,
     body,

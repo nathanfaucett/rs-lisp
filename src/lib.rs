@@ -1,6 +1,6 @@
 pub extern crate lisp_gc as gc;
 pub extern crate lisp_runtime as runtime;
 
-mod init;
+mod lisp;
 
-pub use self::init::*;
+pub use self::lisp::*;

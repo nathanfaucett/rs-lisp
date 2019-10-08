@@ -6,7 +6,7 @@ use core::ptr;
 
 use gc::{Gc, Trace};
 
-use super::{add_external_function, new_bool, new_isize, new_scope, Kind, Object, Scope, Value};
+use super::{add_external_function, new_bool, new_isize, Kind, Object, Scope, Value};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct List(LinkedList<Gc<dyn Value>>);
@@ -159,25 +159,8 @@ impl List {
 
   #[inline]
   pub(crate) fn init_scope(mut scope: Gc<Object<Scope>>, list_kind: Gc<Object<Kind>>) {
-    let mut list_scope = new_scope(scope.clone());
-
-    scope.set("list", list_scope.clone().into_value());
-
-    list_scope.set("List", list_kind.clone().into_value());
-    add_external_function(
-      list_scope.clone(),
-      list_scope.clone(),
-      "is_empty",
-      vec!["list"],
-      list_is_empty,
-    );
-    add_external_function(
-      list_scope.clone(),
-      list_scope,
-      "len",
-      vec!["list"],
-      list_len,
-    );
+    add_external_function(scope.clone(), "list.is_empty", vec!["list"], list_is_empty);
+    add_external_function(scope, "list.len", vec!["list"], list_len);
   }
 }
 

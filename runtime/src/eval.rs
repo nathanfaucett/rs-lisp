@@ -24,8 +24,6 @@ pub enum EvalState {
   If,
   Def,
   Expand,
-  Throw,
-  Catch,
 }
 
 #[derive(Debug)]
@@ -470,8 +468,6 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
             stack.value.push_front(evaluated_list.into_value());
           }
         }
-        EvalState::Catch => {}
-        EvalState::Throw => {}
       },
       None => break,
     }

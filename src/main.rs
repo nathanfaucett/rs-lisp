@@ -18,8 +18,10 @@ fn main() {
       (@arg INPUT: +required "Sets the input file to use")
   )
   .get_matches();
-  lisp::run(
+
+  let lisp = lisp::Lisp::new();
+  lisp.run(
     &canonicalize(matches.value_of("INPUT").expect("No input file given"))
       .expect("Failed to canonicalize input file"),
-  )
+  );
 }
