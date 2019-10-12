@@ -9,8 +9,8 @@ pub struct Escape(Gc<dyn Value>);
 
 impl Trace for Escape {
   #[inline]
-  fn mark(&mut self) {
-    self.0.mark();
+  fn trace(&mut self, marked: bool) {
+    self.0.trace(marked);
   }
 }
 

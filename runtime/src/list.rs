@@ -6,7 +6,7 @@ use core::ptr;
 
 use gc::{Gc, Trace};
 
-use super::{add_external_function, new_bool, new_isize, Kind, Object, Scope, Value};
+use super::{add_external_function, new_bool, new_isize, Object, Scope, Value};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct List(LinkedList<Gc<dyn Value>>);
@@ -73,9 +73,9 @@ impl<'a> IntoIterator for &'a mut List {
 
 impl Trace for List {
   #[inline]
-  fn mark(&mut self) {
+  fn trace(&mut self, marked: bool) {
     for v in self.0.iter_mut() {
-      v.mark();
+      v.trace(marked);
     }
   }
 }
@@ -158,7 +158,7 @@ impl List {
   }
 
   #[inline]
-  pub(crate) fn init_scope(mut scope: Gc<Object<Scope>>, list_kind: Gc<Object<Kind>>) {
+  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
     add_external_function(scope.clone(), "list.is_empty", vec!["list"], list_is_empty);
     add_external_function(scope, "list.len", vec!["list"], list_len);
   }

@@ -13,10 +13,10 @@ pub enum FunctionKind {
 
 impl Trace for FunctionKind {
   #[inline]
-  fn mark(&mut self) {
+  fn trace(&mut self, marked: bool) {
     match self {
       FunctionKind::Internal(ref mut v) => {
-        v.mark();
+        v.trace(marked);
       }
       _ => {}
     }

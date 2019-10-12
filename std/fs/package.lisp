@@ -1,8 +1,8 @@
 (let package {
-  :name :std-numbers
+  :name :std-fs
   :version "0.1.0"
   :authors ["Nathan Faucett nathanfaucett@gmail.com"]
-  :description "std numbers"
+  :description "std file system"
   :deps {
     :std-core { :version "0.1", :path "../core" }
   }

@@ -1,3 +1,4 @@
+use alloc::collections::linked_list::LinkedList;
 use alloc::vec::Vec;
 
 use core::fmt::{self, Debug};
@@ -35,18 +36,18 @@ impl Hash for GcAllocator {
   }
 }
 
-impl Trace for GcAllocator {
-  #[inline(always)]
-  fn is_marked(&self) -> bool {
-    true
-  }
-  #[inline(always)]
-  fn mark(&mut self) {
-    for v in self.values.iter_mut() {
-      v.mark();
+impl Drop for GcAllocator {
+  #[inline]
+  fn drop(&mut self) {
+    for v in self.values.drain(..) {
+      unsafe {
+        v.unsafe_drop();
+      }
     }
   }
 }
+
+impl Trace for GcAllocator {}
 
 impl GcAllocator {
   #[inline]
@@ -117,24 +118,28 @@ impl GcAllocator {
 
   #[inline(always)]
   pub fn collect(&mut self) -> usize {
-    self.scope.mark();
+    self.scope.trace(true);
 
     let mut size = 0;
-    let mut removed = Vec::new();
+    let mut removed = LinkedList::new();
 
     self.values.retain(|v| {
       let marked = v.is_marked();
       if !marked {
         size += v.kind().size();
-        removed.push(v.clone());
+        removed.push_front(v.clone());
       }
       marked
     });
 
-    for v in removed.drain(..) {
+    for v in removed.into_iter() {
       unsafe {
         v.unsafe_drop();
       }
+    }
+
+    for value in self.values.iter_mut() {
+      value.trace(false);
     }
 
     self.size -= size;
@@ -143,7 +148,7 @@ impl GcAllocator {
   }
 
   #[inline]
-  pub(crate) fn init_scope(mut scope: Gc<Object<Scope>>, gc_allocator_kind: Gc<Object<Kind>>) {
+  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
     add_external_function(
       scope,
       "gc_allocator.collect",

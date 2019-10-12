@@ -29,11 +29,11 @@ pub fn new_context() -> Gc<Object<Scope>> {
     init_vec(scope.clone());
     init_map(scope.clone());
 
-    GcAllocator::init_scope(scope.clone(), gc_allocator_kind(scope.clone()));
-    Scope::init_scope(scope.clone(), scope_kind(scope.clone()));
-    List::init_scope(scope.clone(), list_kind(scope.clone()));
-    Vec::init_scope(scope.clone(), vec_kind(scope.clone()));
-    Map::init_scope(scope.clone(), map_kind(scope.clone()));
+    GcAllocator::init_scope(scope.clone());
+    Scope::init_scope(scope.clone());
+    List::init_scope(scope.clone());
+    Vec::init_scope(scope.clone());
+    Map::init_scope(scope.clone());
 
     scope
       .get_mut("default_gc_allocator")
@@ -60,20 +60,19 @@ unsafe fn init_root_scope() -> Gc<Object<Scope>> {
   scope.set_from_value(Object::new(scope_kind.clone(), Scope::new(None)));
 
   gc_allocator.unsafe_set_scope(scope.clone());
-  gc_allocator.maintain(scope.clone());
 
   scope.set("Type", type_kind.clone().into_value());
   scope.set("Scope", scope_kind.clone().into_value());
-  let scope_value = scope.clone().into_value();
-  scope.set("global", scope_value);
 
   let gc_allocator_kind =
     gc_allocator.alloc(Kind::new_kind::<GcAllocator>(type_kind, "GcAllocator"));
-  let gc_allocator_value =
-    gc_allocator.alloc_object(gc_allocator_kind.clone(), gc_allocator.clone());
+  let mut gc_allocator_object = Gc::new(Object::new(gc_allocator_kind.clone(), gc_allocator));
+  let gc_allocator_value = gc_allocator_object.clone().into_value();
+
+  gc_allocator_object.maintain_value(gc_allocator_value.clone());
 
   scope.set("GcAllocator", gc_allocator_kind.into_value());
-  scope.set("default_gc_allocator", gc_allocator_value.into_value());
+  scope.set("default_gc_allocator", gc_allocator_value);
 
   scope
 }

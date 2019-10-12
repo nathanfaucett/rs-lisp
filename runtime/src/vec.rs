@@ -7,18 +7,16 @@ use core::slice::{Iter, IterMut};
 
 use gc::{Gc, Trace};
 
-use super::{
-  add_external_function, new_bool, new_isize, nil_value, Kind, List, Object, Scope, Value,
-};
+use super::{add_external_function, new_bool, new_isize, nil_value, List, Object, Scope, Value};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Vec(vec::Vec<Gc<dyn Value>>);
 
 impl Trace for Vec {
   #[inline]
-  fn mark(&mut self) {
+  fn trace(&mut self, marked: bool) {
     for v in self.0.iter_mut() {
-      v.mark();
+      v.trace(marked);
     }
   }
 }
@@ -164,7 +162,7 @@ impl Vec {
   }
 
   #[inline]
-  pub(crate) fn init_scope(mut scope: Gc<Object<Scope>>, vec_kind: Gc<Object<Kind>>) {
+  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
     add_external_function(scope.clone(), "vec.is_empty", vec!["vec"], vec_is_empty);
     add_external_function(scope.clone(), "vec.len", vec!["vec"], vec_len);
     add_external_function(scope, "vec.nth", vec!["vec", "index"], vec_nth);

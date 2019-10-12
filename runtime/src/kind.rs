@@ -15,7 +15,7 @@ pub struct Kind {
 
 impl Trace for Kind {
   #[inline]
-  fn mark(&mut self) {}
+  fn trace(&mut self, _marked: bool) {}
 }
 
 impl Hash for Kind {

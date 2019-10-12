@@ -6,7 +6,7 @@ pub trait Trace {
     true
   }
   #[inline(always)]
-  fn mark(&mut self) {}
+  fn trace(&mut self, _marked: bool) {}
 }
 
 impl Trace for () {}
@@ -31,3 +31,17 @@ impl Trace for isize {}
 
 impl Trace for f32 {}
 impl Trace for f64 {}
+
+impl<T> Trace for Option<T>
+where
+  T: Trace,
+{
+  #[inline(always)]
+  fn is_marked(&self) -> bool {
+    self.as_ref().map(|value| value.is_marked()).unwrap_or(true)
+  }
+  #[inline(always)]
+  fn trace(&mut self, marked: bool) {
+    self.as_mut().map(|value| value.trace(marked));
+  }
+}

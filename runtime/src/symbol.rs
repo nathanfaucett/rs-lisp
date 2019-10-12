@@ -8,7 +8,7 @@ pub struct Symbol(String);
 
 impl Trace for Symbol {
   #[inline]
-  fn mark(&mut self) {}
+  fn trace(&mut self, _marked: bool) {}
 }
 
 impl fmt::Debug for Symbol {

@@ -14,7 +14,7 @@ pub struct SpecialForm(Box<dyn Fn(&mut Stack)>);
 
 impl Trace for SpecialForm {
   #[inline]
-  fn mark(&mut self) {}
+  fn trace(&mut self, _marked: bool) {}
 }
 
 impl fmt::Debug for SpecialForm {

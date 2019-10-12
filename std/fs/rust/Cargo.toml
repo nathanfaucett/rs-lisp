@@ -1,19 +1,19 @@
 [package]
-name = "lisp-std-numbers"
+name = "lisp-std-fs"
 version = "0.1.0"
 authors = ["Nathan Faucett <nathanfaucett@gmail.com>"]
 
-keywords = ["lisp", "std", "numbers"]
+keywords = ["lisp", "std", "fs"]
 categories = []
 
-description = "lisp std numbers"
+description = "lisp std file system"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://gitlab.com/nathanfaucett/rs-lisp.git"
 homepage = "https://gitlab.com/nathanfaucett/rs-lisp"
 
 [lib]
-name = "lisp-std-numbers"
+name = "lisp-std-fs"
 path = "src/lib.rs"
 crate-type = ["dylib", "rlib"]
 exactname = {dylib = "{}.so", rlib = "{}.rlib"}

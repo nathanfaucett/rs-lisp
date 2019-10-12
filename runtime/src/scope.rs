@@ -3,7 +3,7 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::ptr;
 
-use super::{add_external_function, new_bool, nil_value, Kind, List, Object, Value};
+use super::{add_external_function, new_bool, nil_value, List, Object, Value};
 use gc::{Gc, Trace};
 use hashbrown::HashMap;
 
@@ -22,13 +22,11 @@ impl Hash for Scope {
 
 impl Trace for Scope {
   #[inline]
-  fn mark(&mut self) {
-    if let Some(parent) = &mut self.parent {
-      parent.mark();
-    }
+  fn trace(&mut self, marked: bool) {
+    self.parent.trace(marked);
 
-    for (_, v) in self.map.iter_mut() {
-      v.mark();
+    for (_k, v) in self.map.iter_mut() {
+      v.trace(marked);
     }
   }
 }
@@ -138,7 +136,7 @@ impl Scope {
   }
 
   #[inline]
-  pub(crate) fn init_scope(mut scope: Gc<Object<Scope>>, scope_kind: Gc<Object<Kind>>) {
+  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
     add_external_function(scope.clone(), "scope.get", vec!["scope", "key"], scope_get);
     add_external_function(scope.clone(), "scope.has", vec!["scope", "key"], scope_has);
     add_external_function(scope, "scope.set", vec!["scope", "key", "value"], scope_set);

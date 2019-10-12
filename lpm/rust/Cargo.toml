@@ -15,6 +15,10 @@ homepage = "https://gitlab.com/nathanfaucett/rs-lisp"
 [lib]
 name = "lpm"
 path = "src/lib.rs"
+crate-type = ["dylib", "rlib"]
+exactname = {dylib = "{}.so", rlib = "{}.rlib"}
 
 [dependencies]
+lisp = { version = "0.1", path = "../../" }
+
 [dev-dependencies]

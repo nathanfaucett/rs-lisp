@@ -5,6 +5,7 @@ use gc::{Gc, Trace};
 
 use super::{FunctionKind, List, Object, Scope, Symbol, Value};
 
+#[derive(Eq)]
 pub struct Function {
   name: Option<Gc<Object<Symbol>>>,
   scope: Gc<Object<Scope>>,
@@ -14,17 +15,13 @@ pub struct Function {
 
 impl Trace for Function {
   #[inline]
-  fn mark(&mut self) {
-    if let Some(v) = &mut self.name {
-      v.mark();
-    }
-    self.scope.mark();
-    for v in self.params.iter_mut() {
-      v.mark();
-    }
+  fn trace(&mut self, marked: bool) {
+    self.name.trace(marked);
+    self.scope.trace(marked);
+    self.params.trace(marked);
     match &mut self.body {
       &mut FunctionKind::Internal(ref mut v) => {
-        v.mark();
+        v.trace(marked);
       }
       _ => {}
     }

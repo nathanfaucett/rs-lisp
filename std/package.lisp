@@ -1,11 +1,12 @@
 (let package {
-  :name "std-core"
+  :name :std
   :version "0.1.0"
   :authors ["Nathan Faucett nathanfaucett@gmail.com"]
-  :description "std core"
+  :description "lisp standard lib"
   :deps {
-    :core { :version "0.1" :path "./core" }
-    :numbers { :version "0.1" :path "./numbers" }
+    :std-core { :version "0.1" :path "./core" }
+    :std-numbers { :version "0.1" :path "./numbers" }
+    :std-fs { :version "0.1" :path "./fs" }
   }
 })
 

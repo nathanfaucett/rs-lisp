@@ -6,21 +6,19 @@ use gc::{Gc, Trace};
 use hashbrown::hash_map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
 use hashbrown::HashMap;
 
-use super::{
-  add_external_function, new_bool, new_usize, nil_value, Kind, List, Object, Scope, Value,
-};
+use super::{add_external_function, new_bool, new_usize, nil_value, List, Object, Scope, Value};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Map(HashMap<Gc<dyn Value>, Gc<dyn Value>>);
 
 impl Trace for Map {
   #[inline]
-  fn mark(&mut self) {
+  fn trace(&mut self, marked: bool) {
     for (k, v) in self.0.iter_mut() {
       unsafe {
-        k.unsafe_as_mut().mark();
+        k.unsafe_as_mut().trace(marked);
       }
-      v.mark();
+      v.trace(marked);
     }
   }
 }
@@ -104,6 +102,11 @@ impl Map {
   }
 
   #[inline]
+  pub fn remove(&mut self, key: &Gc<dyn Value>) -> Option<Gc<dyn Value>> {
+    self.0.remove(key)
+  }
+
+  #[inline]
   pub fn has(&self, key: &Gc<dyn Value>) -> bool {
     self.0.contains_key(key)
   }
@@ -139,10 +142,11 @@ impl Map {
   }
 
   #[inline]
-  pub(crate) fn init_scope(mut scope: Gc<Object<Scope>>, vec_kind: Gc<Object<Kind>>) {
+  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
     add_external_function(scope.clone(), "map.is_empty", vec!["map"], map_is_empty);
     add_external_function(scope.clone(), "map.len", vec!["map"], map_len);
     add_external_function(scope.clone(), "map.get", vec!["map", "key"], map_get);
+    add_external_function(scope.clone(), "map.remove", vec!["map", "key"], map_remove);
     add_external_function(scope.clone(), "map.has", vec!["map", "key"], map_has);
     add_external_function(scope, "map.set", vec!["map", "key", "value"], map_set);
   }
@@ -196,7 +200,22 @@ pub fn map_get(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value
   map
     .get(&key)
     .map(Clone::clone)
-    .unwrap_or(nil_value(scope).into_value())
+    .unwrap_or_else(|| nil_value(scope).into_value())
+}
+
+#[inline]
+pub fn map_remove(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let mut mut_args = args.clone();
+  let mut map = mut_args
+    .pop_front()
+    .expect("Map is nil")
+    .downcast::<Object<Map>>()
+    .expect("Failed to downcast to Map");
+  let key = mut_args.pop_front().expect("key is nil");
+
+  map
+    .remove(&key)
+    .unwrap_or_else(|| nil_value(scope).into_value())
 }
 
 #[inline]
@@ -210,7 +229,7 @@ pub fn map_set(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value
   let key = mut_args.pop_front().expect("key is nil");
   let value = mut_args
     .pop_front()
-    .unwrap_or(nil_value(scope).into_value());
+    .unwrap_or_else(|| nil_value(scope).into_value());
 
   map.set(key, value);
   map.into_value()

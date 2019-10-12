@@ -105,8 +105,8 @@ where
   }
 
   #[inline(always)]
-  fn mark(&mut self) {
-    Trace::mark(self);
+  fn trace(&mut self, marked: bool) {
+    Trace::trace(self, marked);
   }
 
   #[inline(always)]
@@ -124,11 +124,11 @@ where
     self.marked
   }
   #[inline(always)]
-  fn mark(&mut self) {
-    if !self.is_marked() {
-      self.marked = true;
-      self.kind.mark();
-      self.value.mark();
+  fn trace(&mut self, marked: bool) {
+    if self.is_marked() != marked {
+      self.marked = marked;
+      self.kind.trace(marked);
+      self.value.trace(marked);
     }
   }
 }

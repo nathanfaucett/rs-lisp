@@ -23,8 +23,8 @@ impl<T> Trace for Gc<T>
 where
   T: Trace,
 {
-  fn mark(&mut self) {
-    self.as_mut().mark()
+  fn trace(&mut self, marked: bool) {
+    self.as_mut().trace(marked)
   }
 }
 

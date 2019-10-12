@@ -54,10 +54,11 @@ impl Stack {
 struct LinkedMap(LinkedList<(Gc<dyn Value>, Gc<dyn Value>)>);
 
 impl Trace for LinkedMap {
-  fn mark(&mut self) {
+  #[inline]
+  fn trace(&mut self, marked: bool) {
     for (k, v) in self.0.iter_mut() {
-      k.mark();
-      v.mark();
+      k.trace(marked);
+      v.trace(marked);
     }
   }
 }
