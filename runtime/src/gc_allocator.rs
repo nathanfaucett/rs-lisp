@@ -168,3 +168,12 @@ pub fn gc_allocator_collect(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>
 
   new_usize(scope, gc_allocator.collect()).into_value()
 }
+
+#[inline]
+pub fn gc_allocator_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+  unsafe {
+    scope
+      .get_with_type::<Kind>("GcAllocator")
+      .expect("failed to get GcAllocator Kind")
+  }
+}

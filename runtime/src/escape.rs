@@ -2,7 +2,7 @@ use core::fmt::{self, Write};
 
 use gc::{Gc, Trace};
 
-use super::Value;
+use super::{new_object, Kind, Object, Scope, Value};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Escape(Gc<dyn Value>);
@@ -43,4 +43,20 @@ impl Escape {
   pub fn inner_mut(&mut self) -> &mut Gc<dyn Value> {
     &mut self.0
   }
+}
+
+#[inline]
+pub fn escape_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+  unsafe {
+    scope
+      .get_with_type::<Kind>("Escape")
+      .expect("failed to get Escape Kind")
+  }
+}
+#[inline]
+pub fn new_escape(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<Object<Escape>> {
+  new_object(
+    scope.clone(),
+    Object::new(escape_kind(scope), Escape::new(value)),
+  )
 }

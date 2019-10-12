@@ -6,7 +6,10 @@ use gc::{Gc, Trace};
 use hashbrown::hash_map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
 use hashbrown::HashMap;
 
-use super::{add_external_function, new_bool, new_usize, nil_value, List, Object, Scope, Value};
+use super::{
+  add_external_function, new_bool, new_object, new_usize, nil_value, Kind, List, Object, Scope,
+  Value,
+};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Map(HashMap<Gc<dyn Value>, Gc<dyn Value>>);
@@ -233,4 +236,17 @@ pub fn map_set(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value
 
   map.set(key, value);
   map.into_value()
+}
+
+#[inline]
+pub fn map_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+  unsafe {
+    scope
+      .get_with_type::<Kind>("Map")
+      .expect("failed to get Map Kind")
+  }
+}
+#[inline]
+pub fn new_map(scope: Gc<Object<Scope>>) -> Gc<Object<Map>> {
+  new_object(scope.clone(), Object::new(map_kind(scope), Map::new()))
 }

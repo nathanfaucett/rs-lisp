@@ -6,7 +6,7 @@ use core::ptr;
 
 use gc::{Gc, Trace};
 
-use super::{add_external_function, new_bool, new_isize, Object, Scope, Value};
+use super::{add_external_function, new_bool, new_isize, new_object, Kind, Object, Scope, Value};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct List(LinkedList<Gc<dyn Value>>);
@@ -184,4 +184,17 @@ pub fn list_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Valu
     .expect("Failed to downcast to List");
 
   new_isize(scope, list.len() as isize).into_value()
+}
+
+#[inline]
+pub fn list_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+  unsafe {
+    scope
+      .get_with_type::<Kind>("List")
+      .expect("failed to get List Kind")
+  }
+}
+#[inline]
+pub fn new_list(scope: Gc<Object<Scope>>) -> Gc<Object<List>> {
+  new_object(scope.clone(), Object::new(list_kind(scope), List::new()))
 }

@@ -6,7 +6,7 @@ use core::ops::{Deref, DerefMut};
 
 use gc::{Gc, Trace};
 
-use super::{Kind, Value};
+use super::{GcAllocator, Kind, Scope, Value};
 
 #[derive(Clone)]
 pub struct Object<T> {
@@ -209,5 +209,18 @@ where
   #[inline(always)]
   fn write(&mut self, bytes: &[u8]) {
     self.0.write(bytes)
+  }
+}
+
+#[inline]
+pub fn new_object<T>(scope: Gc<Object<Scope>>, object: Object<T>) -> Gc<Object<T>>
+where
+  T: PartialEq + Hash + Debug + Trace + 'static,
+{
+  unsafe {
+    let mut gc_allocator = scope
+      .get_with_type::<GcAllocator>("default_gc_allocator")
+      .unwrap();
+    gc_allocator.alloc(object)
   }
 }

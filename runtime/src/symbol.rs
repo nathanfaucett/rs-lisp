@@ -1,7 +1,9 @@
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use core::fmt;
 
-use gc::Trace;
+use gc::{Gc, Trace};
+
+use super::{new_object, Kind, Object, Scope};
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(String);
@@ -46,4 +48,23 @@ impl Symbol {
   pub fn inner_mut(&mut self) -> &mut String {
     &mut self.0
   }
+}
+
+#[inline]
+pub fn symbol_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+  unsafe {
+    scope
+      .get_with_type::<Kind>("Symbol")
+      .expect("failed to get Symbol Kind")
+  }
+}
+#[inline]
+pub fn new_symbol<T>(scope: Gc<Object<Scope>>, value: T) -> Gc<Object<Symbol>>
+where
+  T: ToString,
+{
+  new_object(
+    scope.clone(),
+    Object::new(symbol_kind(scope), Symbol::new(value.to_string())),
+  )
 }

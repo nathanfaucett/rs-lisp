@@ -1,7 +1,9 @@
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use core::fmt::{self, Write};
 
-use gc::Trace;
+use gc::{Gc, Trace};
+
+use super::{new_object, Kind, Object, Scope};
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Keyword(String);
@@ -48,4 +50,23 @@ impl Keyword {
   pub fn inner_mut(&mut self) -> &mut String {
     &mut self.0
   }
+}
+
+#[inline]
+pub fn keyword_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+  unsafe {
+    scope
+      .get_with_type::<Kind>("Keyword")
+      .expect("failed to get Keyword Kind")
+  }
+}
+#[inline]
+pub fn new_keyword<T>(scope: Gc<Object<Scope>>, value: T) -> Gc<Object<Keyword>>
+where
+  T: ToString,
+{
+  new_object(
+    scope.clone(),
+    Object::new(keyword_kind(scope), Keyword::new(value.to_string())),
+  )
 }

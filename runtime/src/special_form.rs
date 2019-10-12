@@ -6,8 +6,8 @@ use core::{fmt, ptr};
 use gc::{Gc, Trace};
 
 use super::{
-  escape_kind, new_function, new_list, new_macro, nil_value, read_value, Escape, EvalState, List,
-  Object, Reader, Stack, Symbol, Value,
+  escape_kind, new_function, new_list, new_macro, new_object, nil_value, read_value, Escape,
+  EvalState, Kind, List, Object, Reader, Scope, Stack, Symbol, Value,
 };
 
 pub struct SpecialForm(Box<dyn Fn(&mut Stack)>);
@@ -297,4 +297,24 @@ pub fn expand_special_form(stack: &mut Stack) {
   } else {
     stack.value.push_front(list.into_value());
   }
+}
+
+#[inline]
+pub fn special_form_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+  unsafe {
+    scope
+      .get_with_type::<Kind>("SpecialForm")
+      .expect("failed to get SpecialForm Kind")
+  }
+}
+
+#[inline]
+pub fn new_special_form<F>(scope: Gc<Object<Scope>>, f: F) -> Gc<Object<SpecialForm>>
+where
+  F: 'static + Fn(&mut Stack),
+{
+  new_object(
+    scope.clone(),
+    Object::new(special_form_kind(scope), SpecialForm::new(f)),
+  )
 }

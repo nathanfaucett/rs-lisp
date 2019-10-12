@@ -7,7 +7,10 @@ use core::slice::{Iter, IterMut};
 
 use gc::{Gc, Trace};
 
-use super::{add_external_function, new_bool, new_isize, nil_value, List, Object, Scope, Value};
+use super::{
+  add_external_function, new_bool, new_isize, new_object, nil_value, Kind, List, Object, Scope,
+  Value,
+};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Vec(vec::Vec<Gc<dyn Value>>);
@@ -208,4 +211,17 @@ pub fn vec_nth(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn V
     .get(*nth.value() as usize)
     .map(Clone::clone)
     .unwrap_or_else(|| nil_value(scope).into_value())
+}
+
+#[inline]
+pub fn vec_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+  unsafe {
+    scope
+      .get_with_type::<Kind>("Vec")
+      .expect("failed to get Vec Kind")
+  }
+}
+#[inline]
+pub fn new_vec(scope: Gc<Object<Scope>>) -> Gc<Object<Vec>> {
+  new_object(scope.clone(), Object::new(vec_kind(scope), Vec::new()))
 }

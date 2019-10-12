@@ -1,9 +1,12 @@
+use alloc::string::ToString;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 
 use gc::{Gc, Trace};
 
-use super::{FunctionKind, List, Object, Scope, Symbol, Value};
+use super::{
+  new_list, new_object, new_symbol, FunctionKind, Kind, List, Object, Scope, Symbol, Value,
+};
 
 #[derive(Eq)]
 pub struct Function {
@@ -19,12 +22,7 @@ impl Trace for Function {
     self.name.trace(marked);
     self.scope.trace(marked);
     self.params.trace(marked);
-    match &mut self.body {
-      &mut FunctionKind::Internal(ref mut v) => {
-        v.trace(marked);
-      }
-      _ => {}
-    }
+    self.body.trace(marked);
   }
 }
 
@@ -109,4 +107,142 @@ impl Function {
   pub fn body(&self) -> &FunctionKind {
     &self.body
   }
+}
+
+#[inline]
+pub fn function_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+  unsafe {
+    scope
+      .get_with_type::<Kind>("Function")
+      .expect("failed to get Function Kind")
+  }
+}
+#[inline]
+pub fn new_function(
+  scope: Gc<Object<Scope>>,
+  name: Option<Gc<Object<Symbol>>>,
+  params: Gc<Object<List>>,
+  body: Gc<dyn Value>,
+) -> Gc<Object<Function>> {
+  new_object(
+    scope.clone(),
+    Object::new(
+      function_kind(scope.clone()),
+      Function::new(name, scope, params, body),
+    ),
+  )
+}
+#[inline]
+pub fn new_external_function<F>(
+  scope: Gc<Object<Scope>>,
+  name: Option<Gc<Object<Symbol>>>,
+  params: Gc<Object<List>>,
+  body: F,
+) -> Gc<Object<Function>>
+where
+  F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
+{
+  new_object(
+    scope.clone(),
+    Object::new(
+      function_kind(scope.clone()),
+      Function::new_external(name, scope, params, body),
+    ),
+  )
+}
+
+#[inline]
+pub fn add_external_function<F, N>(
+  mut scope: Gc<Object<Scope>>,
+  name: N,
+  params: ::alloc::vec::Vec<N>,
+  body: F,
+) -> Gc<Object<Function>>
+where
+  F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
+  N: ToString,
+{
+  let mut list = new_list(scope.clone());
+
+  for param in params {
+    list.push_back(new_symbol(scope.clone(), param).into_value());
+  }
+
+  let function = new_external_function(
+    scope.clone(),
+    Some(new_symbol(scope.clone(), name.to_string())),
+    list,
+    body,
+  );
+  scope.set(&(name.to_string()), function.clone().into_value());
+  function
+}
+
+#[inline]
+pub fn macro_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+  unsafe {
+    scope
+      .get_with_type::<Kind>("Macro")
+      .expect("failed to get Macro Kind")
+  }
+}
+#[inline]
+pub fn new_macro(
+  scope: Gc<Object<Scope>>,
+  name: Option<Gc<Object<Symbol>>>,
+  params: Gc<Object<List>>,
+  body: Gc<dyn Value>,
+) -> Gc<Object<Function>> {
+  new_object(
+    scope.clone(),
+    Object::new(
+      macro_kind(scope.clone()),
+      Function::new(name, scope.clone(), params, body),
+    ),
+  )
+}
+#[inline]
+pub fn new_external_macro<F>(
+  scope: Gc<Object<Scope>>,
+  name: Option<Gc<Object<Symbol>>>,
+  params: Gc<Object<List>>,
+  body: F,
+) -> Gc<Object<Function>>
+where
+  F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
+{
+  new_object(
+    scope.clone(),
+    Object::new(
+      macro_kind(scope.clone()),
+      Function::new_external(name, scope, params, body),
+    ),
+  )
+}
+
+#[inline]
+pub fn add_external_macro<F, N>(
+  mut scope: Gc<Object<Scope>>,
+  name: N,
+  params: ::alloc::vec::Vec<N>,
+  body: F,
+) -> Gc<Object<Function>>
+where
+  F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
+  N: ToString,
+{
+  let mut list = new_list(scope.clone());
+
+  for param in params {
+    list.push_back(new_symbol(scope.clone(), param).into_value());
+  }
+
+  let function = new_external_macro(
+    scope.clone(),
+    Some(new_symbol(scope.clone(), name.to_string())),
+    list,
+    body,
+  );
+  scope.set(&(name.to_string()), function.clone().into_value());
+  function
 }

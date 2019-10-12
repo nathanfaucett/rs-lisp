@@ -3,7 +3,7 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::ptr;
 
-use super::{add_external_function, new_bool, nil_value, List, Object, Value};
+use super::{add_external_function, new_bool, new_object, nil_value, Kind, List, Object, Value};
 use gc::{Gc, Trace};
 use hashbrown::HashMap;
 
@@ -199,4 +199,20 @@ pub fn scope_set(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Val
 
   local_scope.set(key.value(), value);
   local_scope.into_value()
+}
+
+#[inline]
+pub fn scope_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+  unsafe {
+    scope
+      .get_with_type::<Kind>("Scope")
+      .expect("failed to get Scope Kind")
+  }
+}
+#[inline]
+pub fn new_scope(scope: Gc<Object<Scope>>) -> Gc<Object<Scope>> {
+  new_object(
+    scope.clone(),
+    Object::new(scope_kind(scope.clone()), Scope::new(Some(scope))),
+  )
 }
