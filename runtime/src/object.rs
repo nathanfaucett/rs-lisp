@@ -219,7 +219,7 @@ where
 {
   unsafe {
     let mut gc_allocator = scope
-      .get_with_type::<GcAllocator>("default_gc_allocator")
+      .get_with_kind::<GcAllocator>("default_gc_allocator")
       .unwrap();
     gc_allocator.alloc(object)
   }

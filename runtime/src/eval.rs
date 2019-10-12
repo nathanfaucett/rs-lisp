@@ -1,71 +1,26 @@
 use alloc::collections::LinkedList;
 use alloc::string::ToString;
 
-use gc::{Gc, Trace};
+use gc::Gc;
 
 use super::{
-  escape_kind, expand_special_form, function_kind, list_kind, macro_kind, map_kind, new_list,
-  new_map, new_scope, new_vec, nil_kind, nil_value, read_value, special_form_kind, symbol_kind,
-  vec_kind, Escape, Function, FunctionKind, List, Map, Object, Reader, Scope, SpecialForm, Symbol,
-  Value, Vec,
+  escape_kind, expand_special_form, function_kind, list_kind, macro_kind, map_kind, new_linked_map,
+  new_list, new_list_from, new_map, new_scope, new_vec, new_vec_from, nil_value, read_value,
+  special_form_kind, symbol_kind, vec_kind, Escape, EvalState, Function, FunctionKind, LinkedMap,
+  List, Map, Object, Reader, Scope, SpecialForm, Stack, Symbol, Value, Vec,
 };
-
-#[derive(Debug)]
-pub enum EvalState {
-  Eval,
-  EvalVec,
-  EvalMap,
-  EvalMapKeyValue,
-  Call,
-  CallFunction,
-  CallFunctionEvalArgs,
-  PopValue,
-  PopScope,
-  If,
-  Def,
-  Expand,
-}
-
-#[derive(Debug)]
-pub struct Stack {
-  pub value: LinkedList<Gc<dyn Value>>,
-  pub scope: LinkedList<Gc<Object<Scope>>>,
-  pub state: LinkedList<EvalState>,
-}
-
-impl Stack {
-  #[inline]
-  pub fn new(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Self {
-    let mut stack = Stack {
-      value: LinkedList::new(),
-      scope: LinkedList::new(),
-      state: LinkedList::new(),
-    };
-
-    stack.value.push_front(value);
-    stack.scope.push_front(scope);
-    stack.state.push_front(EvalState::Eval);
-
-    return stack;
-  }
-}
-
-#[derive(Debug, Hash, PartialEq, Eq)]
-struct LinkedMap(LinkedList<(Gc<dyn Value>, Gc<dyn Value>)>);
-
-impl Trace for LinkedMap {
-  #[inline]
-  fn trace(&mut self, marked: bool) {
-    for (k, v) in self.0.iter_mut() {
-      k.trace(marked);
-      v.trace(marked);
-    }
-  }
-}
 
 #[inline]
 pub fn eval(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
-  let mut stack = Stack::new(scope.clone(), value);
+  let mut stack_object = scope
+    .get("__stack__")
+    .expect("failed to find stack in scope")
+    .clone()
+    .downcast::<Object<Stack>>()
+    .expect("failed to downcast stack to Stack Kind");
+  let mut stack = stack_object.as_mut().value_mut();
+
+  stack.init(scope, value);
 
   loop {
     match stack.state.pop_front() {
@@ -86,10 +41,14 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
                 .push_front(nil_value(stack.scope.front().unwrap().clone()).into_value());
             }
           } else if value.kind() == &list_kind(stack.scope.front().unwrap().clone()) {
-            let mut list = value
-              .downcast::<Object<List>>()
-              .expect("failed to downcast value to List")
-              .clone_ref();
+            let mut list = new_list_from(
+              stack.scope.front().unwrap().clone(),
+              value
+                .downcast::<Object<List>>()
+                .expect("failed to downcast value to List")
+                .value()
+                .clone(),
+            );
 
             if let Some(value) = list.pop_front() {
               stack.state.push_front(EvalState::Call);
@@ -101,10 +60,14 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
               stack.value.push_front(list.into_value());
             }
           } else if value.kind() == &vec_kind(stack.scope.front().unwrap().clone()) {
-            let mut vec = value
-              .downcast::<Object<Vec>>()
-              .expect("failed to downcast value to Vec")
-              .clone_ref();
+            let mut vec = new_vec_from(
+              stack.scope.front().unwrap().clone(),
+              value
+                .downcast::<Object<Vec>>()
+                .expect("failed to downcast value to Vec")
+                .value()
+                .clone(),
+            );
 
             if let Some(value) = vec.pop() {
               stack.state.push_front(EvalState::EvalVec);
@@ -122,21 +85,17 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
                 .push_front(new_vec(stack.scope.front().unwrap().clone()).into_value());
             }
           } else if value.kind() == &map_kind(stack.scope.front().unwrap().clone()) {
-            let mut key_values = unsafe {
-              Gc::new(Object::new(
-                nil_kind(stack.scope.front().unwrap().clone()),
-                LinkedMap(
-                  value
-                    .downcast::<Object<Map>>()
-                    .expect("failed to downcast value to Map")
-                    .iter()
-                    .map(|(k, v)| (k.clone(), v.clone()))
-                    .collect::<LinkedList<(Gc<dyn Value>, Gc<dyn Value>)>>(),
-                ),
-              ))
-            };
+            let mut key_values = new_linked_map(
+              stack.scope.front().unwrap().clone(),
+              value
+                .downcast::<Object<Map>>()
+                .expect("failed to downcast value to Map")
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<LinkedList<(Gc<dyn Value>, Gc<dyn Value>)>>(),
+            );
 
-            if let Some((key, value)) = key_values.0.pop_back() {
+            if let Some((key, value)) = key_values.pop_back() {
               stack.state.push_front(EvalState::EvalMap);
 
               stack.value.push_front(key_values.into_value());
@@ -214,7 +173,7 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
 
           evaluated_map.set(evaluated_key, evaluated_value);
 
-          if let Some((key, value)) = key_values.0.pop_front() {
+          if let Some((key, value)) = key_values.pop_front() {
             stack.state.push_front(EvalState::EvalMap);
 
             stack.value.push_front(key_values.into_value());
@@ -455,11 +414,15 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
               stack.value.push_front(escape.inner().clone());
             } else if value.kind() == &list_kind(stack.scope.front().unwrap().clone()) {
               stack.value.push_front(
-                value
-                  .downcast::<Object<List>>()
-                  .expect("failed to downcast expand value to List")
-                  .clone_ref()
-                  .into_value(),
+                new_list_from(
+                  stack.scope.front().unwrap().clone(),
+                  value
+                    .downcast::<Object<List>>()
+                    .expect("failed to downcast expand value to List")
+                    .value()
+                    .clone(),
+                )
+                .into_value(),
               );
               expand_special_form(&mut stack);
             } else {

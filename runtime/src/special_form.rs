@@ -6,8 +6,8 @@ use core::{fmt, ptr};
 use gc::{Gc, Trace};
 
 use super::{
-  escape_kind, new_function, new_list, new_macro, new_object, nil_value, read_value, Escape,
-  EvalState, Kind, List, Object, Reader, Scope, Stack, Symbol, Value,
+  escape_kind, new_function, new_kind, new_list, new_macro, new_object, nil_value, read_value,
+  Escape, EvalState, Kind, List, Object, Reader, Scope, Stack, Symbol, Value,
 };
 
 pub struct SpecialForm(Box<dyn Fn(&mut Stack)>);
@@ -56,6 +56,40 @@ impl SpecialForm {
   #[inline(always)]
   pub fn inner_mut(&mut self) -> &mut dyn Fn(&mut Stack) {
     &mut *self.0
+  }
+
+  #[inline]
+  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
+    let special_form_kind = new_kind::<SpecialForm>(scope.clone(), "SpecialForm");
+
+    scope.set("SpecialForm", special_form_kind.into_value());
+
+    let if_function = new_special_form(scope.clone(), if_special_form).into_value();
+    scope.set("if", if_function);
+
+    let fn_function = new_special_form(scope.clone(), fn_special_form).into_value();
+    scope.set("fn", fn_function);
+
+    let macro_function = new_special_form(scope.clone(), macro_special_form).into_value();
+    scope.set("macro", macro_function);
+
+    let def_function = new_special_form(scope.clone(), def_special_form).into_value();
+    scope.set("def", def_function);
+
+    let do_function = new_special_form(scope.clone(), do_special_form).into_value();
+    scope.set("do", do_function);
+
+    let quote_function = new_special_form(scope.clone(), quote_special_form).into_value();
+    scope.set("quote", quote_function);
+
+    let eval_function = new_special_form(scope.clone(), eval_special_form).into_value();
+    scope.set("eval", eval_function);
+
+    let read_function = new_special_form(scope.clone(), read_special_form).into_value();
+    scope.set("read", read_function);
+
+    let expand_function = new_special_form(scope.clone(), expand_special_form).into_value();
+    scope.set("expand", expand_function);
   }
 }
 
@@ -303,7 +337,7 @@ pub fn expand_special_form(stack: &mut Stack) {
 pub fn special_form_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
   unsafe {
     scope
-      .get_with_type::<Kind>("SpecialForm")
+      .get_with_kind::<Kind>("SpecialForm")
       .expect("failed to get SpecialForm Kind")
   }
 }

@@ -173,7 +173,7 @@ pub fn gc_allocator_collect(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>
 pub fn gc_allocator_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
   unsafe {
     scope
-      .get_with_type::<Kind>("GcAllocator")
+      .get_with_kind::<Kind>("GcAllocator")
       .expect("failed to get GcAllocator Kind")
   }
 }

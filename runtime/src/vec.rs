@@ -8,8 +8,8 @@ use core::slice::{Iter, IterMut};
 use gc::{Gc, Trace};
 
 use super::{
-  add_external_function, new_bool, new_isize, new_object, nil_value, Kind, List, Object, Scope,
-  Value,
+  add_external_function, new_bool, new_isize, new_kind, new_object, nil_value, Kind, List, Object,
+  Scope, Value,
 };
 
 #[derive(Clone, Eq, PartialEq)]
@@ -165,6 +165,12 @@ impl Vec {
   }
 
   #[inline]
+  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
+    let vec_kind = new_kind::<Vec>(scope.clone(), "Vec");
+    scope.set("Vec", vec_kind.clone().into_value());
+  }
+
+  #[inline]
   pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
     add_external_function(scope.clone(), "vec.is_empty", vec!["vec"], vec_is_empty);
     add_external_function(scope.clone(), "vec.len", vec!["vec"], vec_len);
@@ -217,11 +223,17 @@ pub fn vec_nth(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn V
 pub fn vec_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
   unsafe {
     scope
-      .get_with_type::<Kind>("Vec")
+      .get_with_kind::<Kind>("Vec")
       .expect("failed to get Vec Kind")
   }
 }
+
 #[inline]
 pub fn new_vec(scope: Gc<Object<Scope>>) -> Gc<Object<Vec>> {
-  new_object(scope.clone(), Object::new(vec_kind(scope), Vec::new()))
+  new_vec_from(scope, Vec::new())
+}
+
+#[inline]
+pub fn new_vec_from(scope: Gc<Object<Scope>>, vec: Vec) -> Gc<Object<Vec>> {
+  new_object(scope.clone(), Object::new(vec_kind(scope), vec.clone()))
 }

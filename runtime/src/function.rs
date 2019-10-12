@@ -5,7 +5,8 @@ use core::hash::{Hash, Hasher};
 use gc::{Gc, Trace};
 
 use super::{
-  new_list, new_object, new_symbol, FunctionKind, Kind, List, Object, Scope, Symbol, Value,
+  eval, new_kind, new_list, new_list_from, new_object, new_symbol, FunctionKind, Kind, List,
+  Object, Scope, Symbol, Value,
 };
 
 #[derive(Eq)]
@@ -107,13 +108,22 @@ impl Function {
   pub fn body(&self) -> &FunctionKind {
     &self.body
   }
+
+  #[inline]
+  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
+    let function_kind = new_kind::<Function>(scope.clone(), "Function");
+    let macro_kind = new_kind::<Function>(scope.clone(), "Macro");
+
+    scope.set("Function", function_kind.into_value());
+    scope.set("Macro", macro_kind.into_value());
+  }
 }
 
 #[inline]
 pub fn function_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
   unsafe {
     scope
-      .get_with_type::<Kind>("Function")
+      .get_with_kind::<Kind>("Function")
       .expect("failed to get Function Kind")
   }
 }
@@ -182,7 +192,7 @@ where
 pub fn macro_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
   unsafe {
     scope
-      .get_with_type::<Kind>("Macro")
+      .get_with_kind::<Kind>("Macro")
       .expect("failed to get Macro Kind")
   }
 }
@@ -245,4 +255,15 @@ where
   );
   scope.set(&(name.to_string()), function.clone().into_value());
   function
+}
+
+#[inline]
+pub fn call_function(
+  scope: Gc<Object<Scope>>,
+  callable: Gc<Object<Function>>,
+  arguments: Gc<Object<List>>,
+) -> Gc<dyn Value> {
+  let mut function_call = new_list_from(scope.clone(), arguments.value().clone());
+  function_call.push_front(callable.into_value());
+  eval(scope, function_call.into_value())
 }

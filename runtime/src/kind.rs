@@ -4,7 +4,7 @@ use core::{mem, ptr};
 
 use gc::{Gc, Trace};
 
-use super::Object;
+use super::{new_object, Object, Scope};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Kind {
@@ -36,11 +36,11 @@ impl Kind {
   }
 
   #[inline(always)]
-  pub(crate) unsafe fn new_type_kind() -> Gc<Object<Kind>> {
+  pub(crate) unsafe fn new_kind_kind() -> Gc<Object<Kind>> {
     let mut kind = Gc::new(Object::new(
       Gc::null(),
       Kind::new(
-        "Type".into(),
+        "Kind".into(),
         mem::size_of::<Kind>(),
         mem::align_of::<Kind>(),
       ),
@@ -50,7 +50,7 @@ impl Kind {
   }
 
   #[inline(always)]
-  pub fn new_kind<T>(kind: Gc<Object<Self>>, name: &str) -> Object<Self> {
+  pub fn new_kind_object<T>(kind: Gc<Object<Self>>, name: &str) -> Object<Self> {
     Object::new(
       kind,
       Kind::new(name.into(), mem::size_of::<T>(), mem::align_of::<T>()),
@@ -69,4 +69,20 @@ impl Kind {
   pub fn align(&self) -> usize {
     self.align
   }
+}
+
+#[inline]
+pub fn kind_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
+  unsafe {
+    scope
+      .get_with_kind::<Kind>("Kind")
+      .expect("failed to get Kind Kind")
+  }
+}
+#[inline]
+pub fn new_kind<T>(scope: Gc<Object<Scope>>, name: &str) -> Gc<Object<Kind>> {
+  new_object(
+    scope.clone(),
+    Kind::new_kind_object::<T>(kind_kind(scope), name),
+  )
 }

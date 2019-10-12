@@ -7,8 +7,8 @@ use hashbrown::hash_map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
 use hashbrown::HashMap;
 
 use super::{
-  add_external_function, new_bool, new_object, new_usize, nil_value, Kind, List, Object, Scope,
-  Value,
+  add_external_function, new_bool, new_kind, new_object, new_usize, nil_value, Kind, List, Object,
+  Scope, Value,
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -145,6 +145,12 @@ impl Map {
   }
 
   #[inline]
+  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
+    let map_kind = new_kind::<Map>(scope.clone(), "Map");
+    scope.set("Map", map_kind.into_value());
+  }
+
+  #[inline]
   pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
     add_external_function(scope.clone(), "map.is_empty", vec!["map"], map_is_empty);
     add_external_function(scope.clone(), "map.len", vec!["map"], map_len);
@@ -242,7 +248,7 @@ pub fn map_set(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value
 pub fn map_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
   unsafe {
     scope
-      .get_with_type::<Kind>("Map")
+      .get_with_kind::<Kind>("Map")
       .expect("failed to get Map Kind")
   }
 }

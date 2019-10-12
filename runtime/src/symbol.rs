@@ -3,7 +3,7 @@ use core::fmt;
 
 use gc::{Gc, Trace};
 
-use super::{new_object, Kind, Object, Scope};
+use super::{new_kind, new_object, Kind, Object, Scope};
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(String);
@@ -48,13 +48,19 @@ impl Symbol {
   pub fn inner_mut(&mut self) -> &mut String {
     &mut self.0
   }
+
+  #[inline]
+  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
+    let symbol_kind = new_kind::<Symbol>(scope.clone(), "Symbol");
+    scope.set("Symbol", symbol_kind.into_value());
+  }
 }
 
 #[inline]
 pub fn symbol_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
   unsafe {
     scope
-      .get_with_type::<Kind>("Symbol")
+      .get_with_kind::<Kind>("Symbol")
       .expect("failed to get Symbol Kind")
   }
 }

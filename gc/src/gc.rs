@@ -66,16 +66,6 @@ impl<T> Gc<T> {
 
 impl<T> Gc<T>
 where
-  T: Clone,
-{
-  #[inline(always)]
-  pub fn clone_ref(&self) -> Self {
-    unsafe { Gc::new(self.as_ref().clone()) }
-  }
-}
-
-impl<T> Gc<T>
-where
   T: ?Sized,
 {
   #[inline(always)]

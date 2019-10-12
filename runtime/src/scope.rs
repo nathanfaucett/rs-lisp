@@ -79,7 +79,7 @@ impl Scope {
   }
 
   #[inline]
-  pub unsafe fn get_with_type<T>(&self, ident: &str) -> Option<Gc<Object<T>>>
+  pub unsafe fn get_with_kind<T>(&self, ident: &str) -> Option<Gc<Object<T>>>
   where
     T: 'static + Hash + Debug + PartialEq + Trace,
   {
@@ -205,7 +205,7 @@ pub fn scope_set(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Val
 pub fn scope_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
   unsafe {
     scope
-      .get_with_type::<Kind>("Scope")
+      .get_with_kind::<Kind>("Scope")
       .expect("failed to get Scope Kind")
   }
 }
