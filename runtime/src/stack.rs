@@ -4,6 +4,9 @@ use gc::{Gc, Trace};
 
 use super::{new_kind, new_object, Kind, Object, Scope, Value};
 
+pub static STACK_GLOBAL_KEY: &'static str = "__stack__";
+pub static STACK_TYPE: &'static str = "Stack";
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EvalState {
   Eval,
@@ -64,7 +67,7 @@ impl Stack {
   }
 
   #[inline]
-  pub fn init(&mut self, scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> &mut Self {
+  pub fn push_scope_value(&mut self, scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> &mut Self {
     self.value.push_front(value);
     self.scope.push_front(scope);
     self.state.push_front(EvalState::Eval);
@@ -73,14 +76,14 @@ impl Stack {
 
   #[inline]
   pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let stack_kind = new_kind::<Stack>(scope.clone(), "Stack");
-    scope.set("Stack", stack_kind.into_value());
+    let stack_kind = new_kind::<Stack>(scope.clone(), STACK_TYPE);
+    scope.set(STACK_TYPE, stack_kind.into_value());
   }
 
   #[inline]
   pub(crate) fn init_scope(mut scope: Gc<Object<Scope>>) {
     let stack = new_stack(scope.clone());
-    scope.set("__stack__", stack.into_value());
+    scope.set(STACK_GLOBAL_KEY, stack.into_value());
   }
 }
 
@@ -88,7 +91,7 @@ impl Stack {
 pub fn stack_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
   unsafe {
     scope
-      .get_with_kind::<Kind>("Stack")
+      .get_with_kind::<Kind>(STACK_TYPE)
       .expect("failed to get Stack Kind")
   }
 }

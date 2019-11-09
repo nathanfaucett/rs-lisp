@@ -93,25 +93,25 @@ impl SpecialForm {
   }
 }
 
-impl<'a> FnOnce<(&'a mut Stack)> for SpecialForm {
+impl<'a> FnOnce<&'a mut Stack> for SpecialForm {
   type Output = ();
 
   #[inline(always)]
-  extern "rust-call" fn call_once(self, stack: (&mut Stack)) -> Self::Output {
+  extern "rust-call" fn call_once(self, stack: &mut Stack) -> Self::Output {
     (self.0)(stack)
   }
 }
 
-impl<'a> Fn<(&'a mut Stack)> for SpecialForm {
+impl<'a> Fn<&'a mut Stack> for SpecialForm {
   #[inline(always)]
-  extern "rust-call" fn call(&self, stack: (&mut Stack)) -> Self::Output {
+  extern "rust-call" fn call(&self, stack: &mut Stack) -> Self::Output {
     self.inner()(stack)
   }
 }
 
-impl<'a> FnMut<(&'a mut Stack)> for SpecialForm {
+impl<'a> FnMut<&'a mut Stack> for SpecialForm {
   #[inline(always)]
-  extern "rust-call" fn call_mut(&mut self, stack: (&mut Stack)) -> Self::Output {
+  extern "rust-call" fn call_mut(&mut self, stack: &mut Stack) -> Self::Output {
     self.inner_mut()(stack)
   }
 }
