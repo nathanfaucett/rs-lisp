@@ -2,7 +2,7 @@ use alloc::string::{String, ToString};
 
 use super::{
   new_kind, new_object, Escape, Function, GcAllocator, Keyword, Kind, LinkedMap, List, Map, Object,
-  Scope, SpecialForm, Stack, Symbol, Vec,
+  Scope, SpecialForm, Symbol, Vec,
 };
 use gc::Gc;
 
@@ -17,7 +17,6 @@ pub fn new_context() -> Gc<Object<Scope>> {
     init_string(scope.clone());
     init_numbers(scope.clone());
     Function::init_kind(scope.clone());
-    Stack::init_kind(scope.clone());
     SpecialForm::init_kind(scope.clone());
     Symbol::init_kind(scope.clone());
     Keyword::init_kind(scope.clone());
@@ -28,7 +27,6 @@ pub fn new_context() -> Gc<Object<Scope>> {
     Map::init_kind(scope.clone());
 
     GcAllocator::init_scope(scope.clone());
-    Stack::init_scope(scope.clone());
     Scope::init_scope(scope.clone());
     List::init_scope(scope.clone());
     LinkedMap::init_scope(scope.clone());

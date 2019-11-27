@@ -149,7 +149,7 @@ where
     canonicalize(parent_dirname_path.join(filename_path)).expect("failed to find local path");
   let path_value = new_string(scope.clone(), path.clone().to_str().unwrap()).into_value();
 
-  let cache = parent_module
+  let mut cache = parent_module
     .get(&new_string(scope.clone(), "cache").into_value())
     .map(Clone::clone)
     .and_then(|cache| cache.downcast::<Object<Map>>().ok())
@@ -165,9 +165,11 @@ where
     let mut module = new_module(scope.clone(), Some(parent_module));
     let mut module_scope = new_scope(get_scope_root(scope.clone()));
 
+    cache.set(path_value.clone(), module.clone().into_value());
+
     module.set(
       new_string(scope.clone(), "filename").into_value(),
-      new_string(scope.clone(), path.to_str().unwrap_or("")).into_value(),
+      path_value.clone(),
     );
     module.set(
       new_string(scope.clone(), "dirname").into_value(),
@@ -205,7 +207,10 @@ where
     );
     add_external_macro(module_scope.clone(), "export", vec!["...exports"], export);
 
-    run_in_scope(module_scope, read_to_string(path.clone()).expect("failed to load local path"));
+    run_in_scope(
+      module_scope,
+      read_to_string(path.clone()).expect("failed to load local path"),
+    );
 
     module
   }

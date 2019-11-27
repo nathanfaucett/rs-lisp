@@ -7,18 +7,12 @@ use super::{
   escape_kind, expand_special_form, function_kind, list_kind, macro_kind, map_kind, new_linked_map,
   new_list, new_list_from, new_map, new_scope, new_vec, new_vec_from, nil_value, read_value,
   special_form_kind, symbol_kind, vec_kind, Escape, EvalState, Function, FunctionKind, LinkedMap,
-  List, Map, Object, Reader, Scope, SpecialForm, Stack, Symbol, Value, Vec, STACK_GLOBAL_KEY,
+  List, Map, Object, Reader, Scope, SpecialForm, Stack, Symbol, Value, Vec,
 };
 
 #[inline]
 pub fn eval(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
-  let mut stack_object = scope
-    .get(STACK_GLOBAL_KEY)
-    .expect("failed to find stack in scope")
-    .clone()
-    .downcast::<Object<Stack>>()
-    .expect("failed to downcast stack to Stack Kind");
-  let mut stack = stack_object.as_mut().value_mut();
+  let mut stack = Stack::new();
 
   stack.push_scope_value(scope, value);
 

@@ -2,10 +2,7 @@ use alloc::collections::LinkedList;
 
 use gc::{Gc, Trace};
 
-use super::{new_kind, new_object, Kind, Object, Scope, Value};
-
-pub static STACK_GLOBAL_KEY: &'static str = "__stack__";
-pub static STACK_TYPE: &'static str = "Stack";
+use super::{Object, Scope, Value};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EvalState {
@@ -73,33 +70,4 @@ impl Stack {
     self.state.push_front(EvalState::Eval);
     self
   }
-
-  #[inline]
-  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let stack_kind = new_kind::<Stack>(scope.clone(), STACK_TYPE);
-    scope.set(STACK_TYPE, stack_kind.into_value());
-  }
-
-  #[inline]
-  pub(crate) fn init_scope(mut scope: Gc<Object<Scope>>) {
-    let stack = new_stack(scope.clone());
-    scope.set(STACK_GLOBAL_KEY, stack.into_value());
-  }
-}
-
-#[inline]
-pub fn stack_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>(STACK_TYPE)
-      .expect("failed to get Stack Kind")
-  }
-}
-
-#[inline]
-pub fn new_stack(scope: Gc<Object<Scope>>) -> Gc<Object<Stack>> {
-  new_object(
-    scope.clone(),
-    Object::new(stack_kind(scope.clone()), Stack::new()),
-  )
 }

@@ -1,3 +1,9 @@
-(import hello "./module_b.lisp")
+(def hello_a (fn hello () 
+  (println "Hello, from " __filename)
+))
 
-(hello)
+(export hello_a)
+
+(import hello_b "./module_b.lisp")
+
+(hello_b)
