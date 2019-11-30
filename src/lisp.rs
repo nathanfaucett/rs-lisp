@@ -6,7 +6,7 @@ use runtime::{
   add_external_function, new_context, new_string, nil_value, List, Object, Scope, Value,
 };
 
-use super::{file_loader, new_module};
+use super::{loader, new_module};
 
 pub struct Lisp {
   scope: Gc<Object<Scope>>,
@@ -29,13 +29,17 @@ impl Lisp {
       new_string(self.scope.clone(), "dirname").into_value(),
       new_string(self.scope.clone(), ".").into_value(),
     );
-    file_loader(
+    loader::load(
       self.scope.clone(),
       module,
-      filename_path
-        .to_str()
-        .expect("failed to move Path to string"),
-    );
+      new_string(
+        self.scope.clone(),
+        filename_path
+          .to_str()
+          .expect("failed to move Path to string"),
+      ),
+    )
+    .expect(&format!("failed to load module {:?}", filename_path));
   }
 }
 

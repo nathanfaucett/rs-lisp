@@ -73,4 +73,16 @@ impl FunctionKind {
   {
     FunctionKind::External(Box::new(body))
   }
+
+  #[inline]
+  pub fn is_internal(&self) -> bool {
+    match self {
+      &FunctionKind::Internal(_) => true,
+      &FunctionKind::External(_) => false,
+    }
+  }
+  #[inline]
+  pub fn is_external(&self) -> bool {
+    !self.is_internal()
+  }
 }

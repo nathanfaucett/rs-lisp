@@ -1,12 +1,10 @@
-use std::fs::{canonicalize, read_to_string};
-use std::path::Path;
-use std::string::ToString;
-
 use gc::Gc;
 use runtime::{
-  add_external_macro, new_map, new_scope, new_string, nil_value, run, List, Map, Object, Scope,
-  Symbol, Value,
+  new_external_function, new_list, new_map, new_string, new_symbol, new_vec, nil_value, List, Map,
+  Object, Scope, Symbol, Value, Vec,
 };
+
+use super::{file_loader_lisp_fn, get_scope_root, load};
 
 #[inline]
 pub fn new_module(
@@ -49,6 +47,38 @@ pub fn new_module(
       .unwrap_or_else(|| new_map(scope.clone()))
       .into_value(),
   );
+  let loaders_string = new_string(scope.clone(), "loaders").into_value();
+  module.set(
+    loaders_string.clone(),
+    parent
+      .as_mut()
+      .map(|parent| {
+        parent
+          .get(&loaders_string)
+          .expect("failed to get loaders from parent module")
+          .clone()
+          .downcast::<Object<Vec>>()
+          .expect("failed to downcast loaders to Vec")
+      })
+      .unwrap_or_else(|| {
+        let mut loaders = new_vec(scope.clone());
+
+        let mut file_loader_params = new_list(scope.clone());
+        file_loader_params.push_front(new_symbol(scope.clone(), "filename").into_value());
+        file_loader_params.push_front(new_symbol(scope.clone(), "module").into_value());
+        loaders.push_front(
+          new_external_function(
+            scope.clone(),
+            Some(new_symbol(scope.clone(), "file_loader")),
+            file_loader_params,
+            file_loader_lisp_fn,
+          )
+          .into_value(),
+        );
+        loaders
+      })
+      .into_value(),
+  );
   module
 }
 
@@ -68,7 +98,8 @@ pub fn import(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Va
     .expect("filed to downcast filename to String");
 
   let root_scope = get_scope_root(scope.clone());
-  let module = file_loader(root_scope.clone(), parent_module, filename.value());
+  let module = load(root_scope.clone(), parent_module, filename.clone())
+    .expect(&format!("No Loader found for {}", filename.value()));
   let exports = module
     .get(&new_string(scope.clone(), "exports").into_value())
     .expect("exports not defined in module")
@@ -124,115 +155,4 @@ pub fn export(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value>
   }
 
   nil_value(scope).into_value()
-}
-
-#[inline]
-pub fn file_loader<T>(
-  scope: Gc<Object<Scope>>,
-  parent_module: Gc<Object<Map>>,
-  filename: T,
-) -> Gc<Object<Map>>
-where
-  T: ToString,
-{
-  let parent_dirname_string = new_string(scope.clone(), "dirname").into_value();
-  let parent_dirname = parent_module
-    .get(&parent_dirname_string)
-    .map(Clone::clone)
-    .expect("parent dirname is nil")
-    .downcast::<Object<String>>()
-    .expect("Failed to downcast dirname to String");
-  let filename_string = filename.to_string();
-  let filename_path = Path::new(&filename_string);
-  let parent_dirname_path = Path::new(parent_dirname.value());
-  let path =
-    canonicalize(parent_dirname_path.join(filename_path)).expect("failed to find local path");
-  let path_value = new_string(scope.clone(), path.clone().to_str().unwrap()).into_value();
-
-  let mut cache = parent_module
-    .get(&new_string(scope.clone(), "cache").into_value())
-    .map(Clone::clone)
-    .and_then(|cache| cache.downcast::<Object<Map>>().ok())
-    .unwrap_or_else(|| new_map(scope.clone()));
-
-  if cache.has(&path_value) {
-    cache
-      .get(&path_value)
-      .map(Clone::clone)
-      .and_then(|cache| cache.downcast::<Object<Map>>().ok())
-      .expect("failed to get module from cache")
-  } else {
-    let mut module = new_module(scope.clone(), Some(parent_module));
-    let mut module_scope = new_scope(get_scope_root(scope.clone()));
-
-    cache.set(path_value.clone(), module.clone().into_value());
-
-    module.set(
-      new_string(scope.clone(), "filename").into_value(),
-      path_value.clone(),
-    );
-    module.set(
-      new_string(scope.clone(), "dirname").into_value(),
-      new_string(
-        scope.clone(),
-        path
-          .parent()
-          .unwrap_or(Path::new(""))
-          .to_str()
-          .unwrap_or(""),
-      )
-      .into_value(),
-    );
-
-    module_scope.set("module", module.clone().into_value());
-    module_scope.set("__filename", path_value.clone());
-    module_scope.set(
-      "__dirname",
-      new_string(
-        scope.clone(),
-        path
-          .parent()
-          .unwrap_or_else(|| Path::new(""))
-          .to_str()
-          .unwrap(),
-      )
-      .into_value(),
-    );
-
-    add_external_macro(
-      module_scope.clone(),
-      "import",
-      vec!["...imports", "module_path"],
-      import,
-    );
-    add_external_macro(module_scope.clone(), "export", vec!["...exports"], export);
-
-    run_in_scope(
-      module_scope,
-      read_to_string(path.clone()).expect("failed to load local path"),
-    );
-
-    module
-  }
-}
-
-#[inline]
-pub fn get_scope_root(scope: Gc<Object<Scope>>) -> Gc<Object<Scope>> {
-  if let Some(parent) = scope.parent() {
-    get_scope_root(parent.clone())
-  } else {
-    scope
-  }
-}
-
-#[inline]
-pub fn run_in_scope<T>(scope: Gc<Object<Scope>>, content: T) -> Gc<dyn Value>
-where
-  T: ToString,
-{
-  let mut raw = String::new();
-  raw.push_str("(do ");
-  raw.push_str(&content.to_string());
-  raw.push(')');
-  run(scope, raw)
 }
