@@ -36,7 +36,7 @@ fn stack_value_eq(list_a: &LinkedList<Gc<dyn Value>>, list_b: &LinkedList<Gc<dyn
   }
   for a in list_a.iter() {
     for b in list_b.iter() {
-      if a.equal(b.as_ref()) {
+      if a == b {
         return false;
       }
     }

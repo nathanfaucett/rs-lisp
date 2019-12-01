@@ -12,7 +12,7 @@ use super::{
   Scope, Value,
 };
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, PartialOrd)]
 pub struct Vec(vec::Vec<Gc<dyn Value>>);
 
 impl Trace for Vec {

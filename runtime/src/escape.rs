@@ -4,7 +4,7 @@ use gc::{Gc, Trace};
 
 use super::{new_kind, new_object, Kind, Object, Scope, Value};
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Hash)]
 pub struct Escape(Gc<dyn Value>);
 
 impl Trace for Escape {

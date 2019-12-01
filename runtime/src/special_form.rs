@@ -1,5 +1,6 @@
 use alloc::boxed::Box;
 use alloc::string::String;
+use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::{fmt, ptr};
 
@@ -28,6 +29,13 @@ impl PartialEq for SpecialForm {
   #[inline]
   fn eq(&self, other: &Self) -> bool {
     ::core::ptr::eq(self, other)
+  }
+}
+
+impl PartialOrd for SpecialForm {
+  #[inline]
+  fn partial_cmp(&self, _other: &Self) -> Option<Ordering> {
+    None
   }
 }
 

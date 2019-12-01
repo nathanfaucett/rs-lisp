@@ -11,7 +11,7 @@ use gc::Trace;
 
 use super::{add_external_function, new_usize, Kind, List, Object, Scope, Value};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, PartialOrd, Eq)]
 pub struct GcAllocator {
   scope: Gc<Object<Scope>>,
   size: usize,
@@ -91,7 +91,7 @@ impl GcAllocator {
   #[inline]
   pub unsafe fn maintain<T>(&mut self, object: Gc<Object<T>>) -> &mut Self
   where
-    T: PartialEq + Hash + Debug + Trace + 'static,
+    T: PartialEq + PartialOrd + Hash + Debug + Trace + 'static,
   {
     self.maintain_value(object.into_value())
   }
@@ -99,7 +99,7 @@ impl GcAllocator {
   #[inline(always)]
   pub fn alloc<T>(&mut self, object: Object<T>) -> Gc<Object<T>>
   where
-    T: PartialEq + Hash + Debug + Trace + 'static,
+    T: PartialEq + PartialOrd + Hash + Debug + Trace + 'static,
   {
     unsafe {
       let object = Gc::new(object);
@@ -111,7 +111,7 @@ impl GcAllocator {
   #[inline(always)]
   pub fn alloc_object<T>(&mut self, kind: Gc<Object<Kind>>, value: T) -> Gc<Object<T>>
   where
-    T: PartialEq + Hash + Debug + Trace + 'static,
+    T: PartialEq + PartialOrd + Hash + Debug + Trace + 'static,
   {
     self.alloc(Object::new(kind, value))
   }

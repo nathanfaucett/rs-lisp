@@ -1,3 +1,4 @@
+use core::cmp::Ordering;
 use core::fmt::{self, Write};
 use core::hash::{Hash, Hasher};
 use core::ptr;
@@ -13,6 +14,13 @@ use super::{
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Map(HashMap<Gc<dyn Value>, Gc<dyn Value>>);
+
+impl PartialOrd for Map {
+  #[inline]
+  fn partial_cmp(&self, _other: &Self) -> Option<Ordering> {
+    None
+  }
+}
 
 impl Trace for Map {
   #[inline]

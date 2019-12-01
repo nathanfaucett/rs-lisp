@@ -10,7 +10,7 @@ use super::{
   add_external_function, new_bool, new_isize, new_kind, new_object, Kind, Object, Scope, Value,
 };
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, PartialOrd, Eq)]
 pub struct List(LinkedList<Gc<dyn Value>>);
 
 impl Hash for List {

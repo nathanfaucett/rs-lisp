@@ -11,7 +11,7 @@ use super::{
   Value,
 };
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, PartialOrd, Eq)]
 pub struct LinkedMap(LinkedList<(Gc<dyn Value>, Gc<dyn Value>)>);
 
 impl Trace for LinkedMap {
@@ -110,17 +110,14 @@ impl LinkedMap {
 
   #[inline]
   pub fn has(&mut self, key: &Gc<dyn Value>) -> bool {
-    self
-      .iter()
-      .find(|&(ref k, _)| k.equal(key.as_ref()))
-      .is_some()
+    self.iter().find(|&(ref k, _)| k == key).is_some()
   }
 
   #[inline]
   pub fn get(&mut self, key: &Gc<dyn Value>) -> Option<&Gc<dyn Value>> {
     self
       .iter()
-      .find(|&(ref k, _)| k.equal(key.as_ref()))
+      .find(|&(ref k, _)| k == key)
       .map(|&(_, ref v)| v)
   }
 

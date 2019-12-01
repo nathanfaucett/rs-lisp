@@ -1,4 +1,5 @@
 use alloc::string::String;
+use core::cmp::Ordering;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::ptr;
@@ -11,6 +12,13 @@ use hashbrown::HashMap;
 pub struct Scope {
   parent: Option<Gc<Object<Scope>>>,
   map: HashMap<String, Gc<dyn Value>>,
+}
+
+impl PartialOrd for Scope {
+  #[inline]
+  fn partial_cmp(&self, _other: &Self) -> Option<Ordering> {
+    None
+  }
 }
 
 impl Hash for Scope {
@@ -81,7 +89,7 @@ impl Scope {
   #[inline]
   pub unsafe fn get_with_kind<T>(&self, ident: &str) -> Option<Gc<Object<T>>>
   where
-    T: 'static + Hash + Debug + PartialEq + Trace,
+    T: 'static + Hash + Debug + PartialEq + PartialOrd + Trace,
   {
     self
       .get(ident)

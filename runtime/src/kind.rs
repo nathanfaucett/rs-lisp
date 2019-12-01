@@ -6,7 +6,7 @@ use gc::{Gc, Trace};
 
 use super::{new_object, Object, Scope};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd)]
 pub struct Kind {
   name: String,
   size: usize,

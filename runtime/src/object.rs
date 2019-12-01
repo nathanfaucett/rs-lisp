@@ -69,7 +69,7 @@ impl<T> Object<T> {
 
 impl<T> Object<T>
 where
-  T: 'static + PartialEq + Hash + Debug + Trace,
+  T: 'static + PartialEq + PartialOrd + Hash + Debug + Trace,
 {
   #[inline(always)]
   pub fn into_value(self: Gc<Self>) -> Gc<dyn Value> {
@@ -79,7 +79,7 @@ where
 
 impl<T> Value for Object<T>
 where
-  T: 'static + PartialEq + Hash + Debug + Trace,
+  T: 'static + PartialEq + PartialOrd + Hash + Debug + Trace,
 {
   #[inline(always)]
   fn kind(&self) -> &Gc<Object<Kind>> {
@@ -89,6 +89,14 @@ where
   #[inline(always)]
   fn debug(&self, f: &mut fmt::Formatter) -> fmt::Result {
     Debug::fmt(&self.value, f)
+  }
+
+  #[inline(always)]
+  fn compare(&self, other: &dyn Value) -> Option<Ordering> {
+    match other.downcast_ref::<Object<T>>() {
+      Some(other) => self.value().partial_cmp(other.value()),
+      None => None,
+    }
   }
 
   #[inline(always)]
@@ -112,6 +120,16 @@ where
   #[inline(always)]
   fn is_marked(&self) -> bool {
     Trace::is_marked(self)
+  }
+}
+
+impl<T> Ord for Object<T>
+where
+  T: 'static + Ord,
+{
+  #[inline]
+  fn cmp(&self, other: &Self) -> Ordering {
+    self.value().cmp(other.value())
   }
 }
 
@@ -150,16 +168,6 @@ where
   #[inline(always)]
   fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
     self.value().partial_cmp(other.value())
-  }
-}
-
-impl<T> Ord for Object<T>
-where
-  T: Ord,
-{
-  #[inline(always)]
-  fn cmp(&self, other: &Self) -> Ordering {
-    self.value().cmp(other.value())
   }
 }
 
@@ -215,7 +223,7 @@ where
 #[inline]
 pub fn new_object<T>(scope: Gc<Object<Scope>>, object: Object<T>) -> Gc<Object<T>>
 where
-  T: PartialEq + Hash + Debug + Trace + 'static,
+  T: PartialEq + PartialOrd + Hash + Debug + Trace + 'static,
 {
   unsafe {
     let mut gc_allocator = scope

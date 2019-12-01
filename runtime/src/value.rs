@@ -1,15 +1,17 @@
 use core::any::{Any, TypeId};
+use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 
 use gc::{Gc, Trace};
 
-use super::{Kind, Object};
+use super::{add_external_function, new_bool, nil_value, Kind, List, Object, Scope};
 
 pub trait Value: Any {
   fn kind(&self) -> &Gc<Object<Kind>>;
   fn debug(&self, f: &mut fmt::Formatter) -> fmt::Result;
   fn equal(&self, other: &dyn Value) -> bool;
+  fn compare(&self, other: &dyn Value) -> Option<Ordering>;
   fn hash(&self, hasher: &mut dyn Hasher);
   fn trace(&mut self, marked: bool);
   fn is_marked(&self) -> bool;
@@ -59,22 +61,102 @@ impl dyn Value {
       Err(self)
     }
   }
+
+  #[inline]
+  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
+    add_external_function(scope.clone(), "=", vec!["a", "b"], value_eq);
+    add_external_function(scope.clone(), ">", vec!["a", "b"], value_gt);
+    add_external_function(scope.clone(), ">=", vec!["a", "b"], value_ge);
+    add_external_function(scope.clone(), "<", vec!["a", "b"], value_lt);
+    add_external_function(scope.clone(), "<=", vec!["a", "b"], value_le);
+  }
+}
+
+#[inline]
+pub fn value_eq(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let a = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+  let b = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+
+  new_bool(scope, a == b).into_value()
+}
+
+#[inline]
+pub fn value_gt(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let a = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+  let b = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+
+  new_bool(scope, a > b).into_value()
+}
+
+#[inline]
+pub fn value_ge(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let a = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+  let b = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+
+  new_bool(scope, a >= b).into_value()
+}
+
+#[inline]
+pub fn value_lt(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let a = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+  let b = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+
+  new_bool(scope, a < b).into_value()
+}
+
+#[inline]
+pub fn value_le(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let a = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+  let b = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+
+  new_bool(scope, a <= b).into_value()
 }
 
 impl dyn Value {
   #[inline(always)]
   pub unsafe fn into_object_unchecked<T>(self: Gc<Self>) -> Gc<Object<T>>
   where
-    T: 'static + PartialEq + Hash + fmt::Debug + Trace,
+    T: 'static + PartialEq + PartialOrd + Hash + fmt::Debug + Trace,
   {
     self.downcast_unchecked::<Object<T>>()
   }
   #[inline(always)]
   pub fn into_object<T>(self: Gc<Self>) -> Result<Gc<Object<T>>, Gc<Self>>
   where
-    T: 'static + PartialEq + Hash + fmt::Debug + Trace,
+    T: 'static + PartialEq + PartialOrd + Hash + fmt::Debug + Trace,
   {
     self.downcast::<Object<T>>()
+  }
+}
+
+impl PartialOrd for dyn Value {
+  #[inline(always)]
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    if self.kind() == other.kind() {
+      self.compare(other)
+    } else {
+      None
+    }
   }
 }
 

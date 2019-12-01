@@ -1,4 +1,5 @@
 use alloc::string::ToString;
+use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 
@@ -32,6 +33,13 @@ impl Hash for Function {
   fn hash<H: Hasher>(&self, state: &mut H) {
     self.params.hash(state);
     self.body.hash(state);
+  }
+}
+
+impl PartialOrd for Function {
+  #[inline]
+  fn partial_cmp(&self, _other: &Self) -> Option<Ordering> {
+    None
   }
 }
 
