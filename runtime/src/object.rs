@@ -6,24 +6,35 @@ use core::ops::{Deref, DerefMut};
 
 use gc::{Gc, Trace};
 
-use super::{GcAllocator, Kind, Scope, Value};
+use super::{GcAllocator, Kind, Map, Scope, Value};
 
 #[derive(Clone)]
 pub struct Object<T> {
   pub(crate) marked: bool,
   pub(crate) kind: Gc<Object<Kind>>,
+  pub(crate) meta: Option<Gc<Object<Map>>>,
   pub(crate) value: T,
 }
 
 impl<T> Object<T>
 where
-  T: PartialEq + Hash + Debug,
+  T: 'static + PartialEq + PartialOrd + Hash + Debug + Trace,
 {
   #[inline(always)]
   pub fn new(kind: Gc<Object<Kind>>, value: T) -> Self {
     Object {
       marked: false,
       kind: kind,
+      meta: None,
+      value: value,
+    }
+  }
+  #[inline(always)]
+  pub fn new_with_meta(kind: Gc<Object<Kind>>, value: T, meta: Gc<Object<Map>>) -> Self {
+    Object {
+      marked: false,
+      kind: kind,
+      meta: Some(meta),
       value: value,
     }
   }
@@ -37,6 +48,14 @@ impl<T> Object<T> {
   #[inline(always)]
   pub fn value_mut(&mut self) -> &mut T {
     &mut self.value
+  }
+  #[inline(always)]
+  pub fn meta(&self) -> Option<&Gc<Object<Map>>> {
+    self.meta.as_ref()
+  }
+  #[inline(always)]
+  pub fn meta_mut(&mut self) -> Option<&mut Gc<Object<Map>>> {
+    self.meta.as_mut()
   }
 }
 
@@ -96,14 +115,6 @@ where
     match other.downcast_ref::<Object<T>>() {
       Some(other) => self.value().partial_cmp(other.value()),
       None => None,
-    }
-  }
-
-  #[inline(always)]
-  fn equal(&self, other: &dyn Value) -> bool {
-    match other.downcast_ref::<Object<T>>() {
-      Some(other) => (self.kind() == other.kind() && self.value() == other.value()),
-      None => false,
     }
   }
 

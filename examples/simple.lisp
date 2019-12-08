@@ -1,7 +1,7 @@
 (def test (fn (x) (if x true false)))
 
 (def a (test true))
-(def b (test false))
+(def b (test (bool.not true)))
 
 (println a)
 (println b)

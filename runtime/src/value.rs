@@ -10,7 +10,6 @@ use super::{add_external_function, new_bool, nil_value, Kind, List, Object, Scop
 pub trait Value: Any {
   fn kind(&self) -> &Gc<Object<Kind>>;
   fn debug(&self, f: &mut fmt::Formatter) -> fmt::Result;
-  fn equal(&self, other: &dyn Value) -> bool;
   fn compare(&self, other: &dyn Value) -> Option<Ordering>;
   fn hash(&self, hasher: &mut dyn Hasher);
   fn trace(&mut self, marked: bool);
@@ -176,7 +175,10 @@ impl PartialOrd for dyn Value {
 impl PartialEq for dyn Value {
   #[inline(always)]
   fn eq(&self, other: &Self) -> bool {
-    self.equal(other)
+    self
+      .partial_cmp(other)
+      .map(|ordering| ordering == Ordering::Equal)
+      .unwrap_or(false)
   }
 }
 
