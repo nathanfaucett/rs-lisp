@@ -4,7 +4,9 @@ use core::{mem, ptr};
 
 use gc::{Gc, Trace};
 
-use super::{new_object, Object, Scope};
+use super::{
+  add_external_function, new_object, new_string, new_usize, nil_value, List, Object, Scope, Value,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd)]
 pub struct Kind {
@@ -69,6 +71,63 @@ impl Kind {
   pub fn align(&self) -> usize {
     self.align
   }
+
+  #[inline]
+  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
+    add_external_function(scope.clone(), "kind.of", vec!["value"], kind_of);
+    add_external_function(scope.clone(), "kind.name", vec!["value"], kind_name);
+    add_external_function(scope.clone(), "kind.size", vec!["value"], kind_size);
+    add_external_function(scope, "kind.align", vec!["value"], kind_align);
+  }
+}
+
+#[inline]
+pub fn kind_of(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope).into_value())
+    .kind()
+    .clone()
+    .into_value()
+}
+
+#[inline]
+pub fn kind_name(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  new_string(
+    scope.clone(),
+    args
+      .pop_front()
+      .unwrap_or_else(|| nil_value(scope).into_value())
+      .kind()
+      .name(),
+  )
+  .into_value()
+}
+
+#[inline]
+pub fn kind_size(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  new_usize(
+    scope.clone(),
+    args
+      .pop_front()
+      .unwrap_or_else(|| nil_value(scope).into_value())
+      .kind()
+      .size(),
+  )
+  .into_value()
+}
+
+#[inline]
+pub fn kind_align(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  new_usize(
+    scope.clone(),
+    args
+      .pop_front()
+      .unwrap_or_else(|| nil_value(scope).into_value())
+      .kind()
+      .align(),
+  )
+  .into_value()
 }
 
 #[inline]

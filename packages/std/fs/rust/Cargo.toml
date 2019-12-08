@@ -1,24 +1,23 @@
 [package]
-name = "lpm"
+name = "lisp-std-fs"
 version = "0.1.0"
 authors = ["Nathan Faucett <nathanfaucett@gmail.com>"]
 
-keywords = ["lisp", "package", "manager"]
+keywords = ["lisp", "std", "fs"]
 categories = []
 
-description = "lisp package manager"
+description = "lisp std file system"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://gitlab.com/nathanfaucett/rs-lisp.git"
 homepage = "https://gitlab.com/nathanfaucett/rs-lisp"
 
 [lib]
-name = "lpm"
+name = "lisp_std_fs"
 path = "src/lib.rs"
 crate-type = ["dylib", "rlib"]
-exactname = {dylib = "{}.so", rlib = "{}.rlib"}
 
 [dependencies]
-lisp = { version = "0.1", path = "../../" }
+lisp = { git = "https://gitlab.com/nathanfaucett/rs-lisp" }
 
 [dev-dependencies]

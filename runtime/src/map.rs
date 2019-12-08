@@ -153,7 +153,7 @@ impl Map {
   }
 
   #[inline]
-  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
+  pub(crate) fn init_kind(mut scope: Gc<Object<Scope>>) {
     let map_kind = new_kind::<Map>(scope.clone(), "Map");
     scope.set("Map", map_kind.into_value());
   }

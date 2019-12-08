@@ -1,17 +1,15 @@
 (def for-each (fn for-each (array, func) 
-  (for-each-recur 0, (vec.len array), array, func)
+  (for-each-recur 0_usize, (vec.len array), array, func)
 ))
 
 (def for-each-recur (fn for-each-recur (index, len, array, func)
-  (if (= index len)
+  (if (usize.eq index, len)
     array
     (do
-      (func (vec.nth array, index), index)
-      (for-each-recur (+ index 1), len, array, func)
+      (func (vec.get array, index), index)
+      (for-each-recur (usize.add index 1_usize), len, array, func)
     )
   )
 ))
 
-(println default_gc_allocator)
-
-(for-each ["Hello, world!", :keyword], println)
+(println (for-each ["Hello, world!", :keyword], println))

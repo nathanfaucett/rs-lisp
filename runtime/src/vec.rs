@@ -8,7 +8,7 @@ use core::slice::{Iter, IterMut};
 use gc::{Gc, Trace};
 
 use super::{
-  add_external_function, new_bool, new_isize, new_kind, new_object, nil_value, Kind, List, Object,
+  add_external_function, new_bool, new_kind, new_object, new_usize, nil_value, Kind, List, Object,
   Scope, Value,
 };
 
@@ -113,14 +113,43 @@ impl Vec {
   }
 
   #[inline]
+  pub fn push_back(&mut self, value: Gc<dyn Value>) -> &mut Self {
+    self.push(value)
+  }
+
+  #[inline]
   pub fn push_front(&mut self, value: Gc<dyn Value>) -> &mut Self {
     self.0.insert(0, value);
     self
   }
 
   #[inline]
+  pub fn insert(&mut self, index: usize, value: Gc<dyn Value>) -> &mut Self {
+    if index >= self.len() {
+      self.push(value);
+    } else {
+      self.insert(index, value);
+    }
+    self
+  }
+
+  #[inline]
   pub fn pop(&mut self) -> Option<Gc<dyn Value>> {
     self.0.pop()
+  }
+
+  #[inline]
+  pub fn pop_back(&mut self) -> Option<Gc<dyn Value>> {
+    self.pop()
+  }
+
+  #[inline]
+  pub fn pop_front(&mut self) -> Option<Gc<dyn Value>> {
+    if self.0.is_empty() {
+      None
+    } else {
+      Some(self.0.remove(0))
+    }
   }
 
   #[inline]
@@ -165,7 +194,7 @@ impl Vec {
   }
 
   #[inline]
-  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
+  pub(crate) fn init_kind(mut scope: Gc<Object<Scope>>) {
     let vec_kind = new_kind::<Vec>(scope.clone(), "Vec");
     scope.set("Vec", vec_kind.clone().into_value());
   }
@@ -174,7 +203,26 @@ impl Vec {
   pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
     add_external_function(scope.clone(), "vec.is_empty", vec!["vec"], vec_is_empty);
     add_external_function(scope.clone(), "vec.len", vec!["vec"], vec_len);
-    add_external_function(scope, "vec.nth", vec!["vec", "index"], vec_nth);
+    add_external_function(scope.clone(), "vec.nth", vec!["vec", "index"], vec_nth);
+    add_external_function(scope.clone(), "vec.get", vec!["vec", "index"], vec_nth);
+    add_external_function(
+      scope.clone(),
+      "vec.push_front",
+      vec!["vec", "...args"],
+      vec_push_front,
+    );
+    add_external_function(
+      scope.clone(),
+      "vec.push_back",
+      vec!["vec", "...args"],
+      vec_push_back,
+    );
+    add_external_function(
+      scope,
+      "vec.insert",
+      vec!["vec", "index", "value"],
+      vec_insert,
+    );
   }
 }
 
@@ -197,7 +245,7 @@ pub fn vec_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value
     .downcast_ref::<Object<Vec>>()
     .expect("Failed to downcast to Vec");
 
-  new_isize(scope, vec.len() as isize).into_value()
+  new_usize(scope, vec.len()).into_value()
 }
 
 #[inline]
@@ -210,13 +258,63 @@ pub fn vec_nth(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn V
   let nth = args
     .pop_front()
     .expect("nth is nil")
-    .downcast::<Object<isize>>()
+    .downcast::<Object<usize>>()
     .expect("Failed to downcast to USize");
 
   vec
-    .get(*nth.value() as usize)
+    .get(*nth.value())
     .map(Clone::clone)
     .unwrap_or_else(|| nil_value(scope).into_value())
+}
+
+#[inline]
+pub fn vec_push_front(_scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let mut vec = args
+    .pop_front()
+    .expect("Vec is nil")
+    .downcast::<Object<Vec>>()
+    .expect("Failed to downcast argument to Vec");
+
+  for value in args.iter() {
+    vec.push_front(value.clone());
+  }
+
+  vec.into_value()
+}
+
+#[inline]
+pub fn vec_push_back(_scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let mut vec = args
+    .pop_front()
+    .expect("Vec is nil")
+    .downcast::<Object<Vec>>()
+    .expect("Failed to downcast argument to Vec");
+
+  for value in args.iter() {
+    vec.push_back(value.clone());
+  }
+
+  vec.into_value()
+}
+
+#[inline]
+pub fn vec_insert(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let mut vec = args
+    .pop_front()
+    .expect("Vec is nil")
+    .downcast::<Object<Vec>>()
+    .expect("Failed to downcast argument to Vec");
+  let index = args
+    .pop_front()
+    .expect("index is nil")
+    .downcast::<Object<usize>>()
+    .expect("Failed to downcast argument to usize");
+  let value = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+
+  vec.insert(*index.value(), value);
+  vec.into_value()
 }
 
 #[inline]

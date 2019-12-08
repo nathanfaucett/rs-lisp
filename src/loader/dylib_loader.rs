@@ -1,40 +1,38 @@
-use std::fs::{canonicalize, read_to_string};
+use std::fs::canonicalize;
 use std::path::Path;
 
 use gc::Gc;
-use runtime::{
-  add_external_macro, new_map, new_scope, new_string, nil_value, List, Map, Object, Scope, Value,
-};
+use runtime::{new_map, new_string, nil_value, List, Map, Object, Scope, Value};
 
-use super::super::{export, get_scope_root, import, new_module, run_in_scope};
+use super::super::{new_module, new_dylib};
 
 #[inline]
-pub fn file_loader_lisp_fn(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn dylib_loader_lisp_fn(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
   let module = args
     .pop_front()
-    .expect("module not passed to file_loader")
+    .expect("module not passed to dylib_loader")
     .clone()
     .downcast::<Object<Map>>()
     .expect("Failed to downcast module to Map");
   let filename = args
     .pop_front()
-    .expect("filename not passed to file_loader")
+    .expect("filename not passed to dylib_loader")
     .clone()
     .downcast::<Object<String>>()
     .expect("Failed to downcast filename to String");
 
-  file_loader(scope.clone(), module, filename.value())
+  dylib_loader(scope.clone(), module, filename.value())
     .map(|module| module.into_value())
     .unwrap_or_else(|| nil_value(scope).into_value())
 }
 
 #[inline]
-pub fn file_loader(
+pub fn dylib_loader(
   scope: Gc<Object<Scope>>,
   parent_module: Gc<Object<Map>>,
   filename: &String,
 ) -> Option<Gc<Object<Map>>> {
-  if filename.starts_with(".") || filename.starts_with("/") || filename.starts_with("\\") {
+  if filename.ends_with(".so") {
     let parent_dirname_string = new_string(scope.clone(), "dirname").into_value();
     let parent_dirname = parent_module
       .get(&parent_dirname_string)
@@ -42,14 +40,7 @@ pub fn file_loader(
       .expect("parent dirname is nil")
       .downcast::<Object<String>>()
       .expect("Failed to downcast dirname to String");
-
-    let mut filename_path = Path::new(filename);
-    let mut filename_with_ext = filename.clone();
-    if filename_path.extension().is_none() {
-      filename_with_ext.push_str(".lisp");
-      filename_path = Path::new(&filename_with_ext);
-    }
-
+    let filename_path = Path::new(filename);
     let parent_dirname_path = Path::new(parent_dirname.value());
     let path =
       canonicalize(parent_dirname_path.join(filename_path)).expect("failed to find local path");
@@ -71,7 +62,6 @@ pub fn file_loader(
       )
     } else {
       let mut module = new_module(scope.clone(), Some(parent_module));
-      let mut module_scope = new_scope(get_scope_root(scope.clone()));
 
       cache.set(path_value.clone(), module.clone().into_value());
 
@@ -91,33 +81,16 @@ pub fn file_loader(
         )
         .into_value(),
       );
+      let mut exports = module
+        .get(&new_string(scope.clone(), "exports").into_value())
+        .unwrap()
+        .clone()
+        .downcast::<Object<Map>>()
+        .unwrap();
 
-      module_scope.set("module", module.clone().into_value());
-      module_scope.set("__filename", path_value.clone());
-      module_scope.set(
-        "__dirname",
-        new_string(
-          scope.clone(),
-          path
-            .parent()
-            .unwrap_or_else(|| Path::new(""))
-            .to_str()
-            .unwrap(),
-        )
-        .into_value(),
-      );
-
-      add_external_macro(
-        module_scope.clone(),
-        "import",
-        vec!["...imports", "module_path"],
-        import,
-      );
-      add_external_macro(module_scope.clone(), "export", vec!["...exports"], export);
-
-      run_in_scope(
-        module_scope,
-        read_to_string(path.clone()).expect("failed to load local path"),
+      exports.set(
+        new_string(scope.clone(), path.file_stem().unwrap().to_str().unwrap()).into_value(),
+        new_dylib(scope.clone(), path.to_str().unwrap()).into_value(),
       );
 
       Some(module)

@@ -6,7 +6,7 @@ use runtime::{
   add_external_function, new_context, new_string, nil_value, List, Object, Scope, Value,
 };
 
-use super::{loader, new_module};
+use super::{loader, new_module, DyLib};
 
 pub struct Lisp {
   scope: Gc<Object<Scope>>,
@@ -16,6 +16,9 @@ impl Lisp {
   #[inline]
   pub fn new() -> Self {
     let scope = new_context();
+
+    DyLib::init_kind(scope.clone());
+    DyLib::init_scope(scope.clone());
 
     add_external_function(scope.clone(), "println", vec!["...args"], println);
 

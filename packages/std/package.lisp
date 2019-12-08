@@ -5,7 +5,7 @@
   :description "lisp standard lib"
   :deps {
     :std-core { :version "0.1" :path "./core" }
-    :std-numbers { :version "0.1" :path "./numbers" }
+    :std-num { :version "0.1" :path "./num" }
     :std-fs { :version "0.1" :path "./fs" }
   }
 })

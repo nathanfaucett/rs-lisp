@@ -18,6 +18,7 @@ pub enum EvalState {
   If,
   Def,
   Expand,
+  Exit,
 }
 
 #[derive(Clone, Debug, Eq, Hash)]

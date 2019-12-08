@@ -65,6 +65,7 @@ impl dyn Value {
   #[inline]
   pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
     add_external_function(scope.clone(), "=", vec!["a", "b"], value_eq);
+    add_external_function(scope.clone(), "!=", vec!["a", "b"], value_ne);
     add_external_function(scope.clone(), ">", vec!["a", "b"], value_gt);
     add_external_function(scope.clone(), ">=", vec!["a", "b"], value_ge);
     add_external_function(scope.clone(), "<", vec!["a", "b"], value_lt);
@@ -82,6 +83,18 @@ pub fn value_eq(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn 
     .unwrap_or_else(|| nil_value(scope.clone()).into_value());
 
   new_bool(scope, a == b).into_value()
+}
+
+#[inline]
+pub fn value_ne(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let a = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+  let b = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+
+  new_bool(scope, a != b).into_value()
 }
 
 #[inline]

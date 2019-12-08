@@ -2,8 +2,12 @@ use gc::Gc;
 use runtime::{call_function, new_list, new_string, Function, Map, Object, Scope, Vec};
 
 mod file_loader;
+mod dylib;
+mod dylib_loader;
 
 pub use self::file_loader::*;
+pub use self::dylib::*;
+pub use self::dylib_loader::*;
 
 #[inline]
 pub fn load(

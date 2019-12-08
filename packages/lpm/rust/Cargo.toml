@@ -1,22 +1,23 @@
 [package]
-name = "lisp-std-numbers"
+name = "lpm"
 version = "0.1.0"
 authors = ["Nathan Faucett <nathanfaucett@gmail.com>"]
 
-keywords = ["lisp", "std", "numbers"]
+keywords = ["lisp", "package", "manager"]
 categories = []
 
-description = "lisp std numbers"
+description = "lisp package manager"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://gitlab.com/nathanfaucett/rs-lisp.git"
 homepage = "https://gitlab.com/nathanfaucett/rs-lisp"
 
 [lib]
-name = "lisp-std-numbers"
+name = "lpm"
 path = "src/lib.rs"
-crate-type = ["dylib", "rlib"]
-exactname = {dylib = "{}.so", rlib = "{}.rlib"}
+crate-type = ["dylib"]
 
 [dependencies]
+lisp = { git = "https://gitlab.com/nathanfaucett/rs-lisp" }
+
 [dev-dependencies]

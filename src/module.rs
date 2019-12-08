@@ -4,7 +4,7 @@ use runtime::{
   Object, Scope, Symbol, Value, Vec,
 };
 
-use super::{file_loader_lisp_fn, get_scope_root, load};
+use super::{file_loader_lisp_fn, get_scope_root, load, dylib_loader_lisp_fn};
 
 #[inline]
 pub fn new_module(
@@ -63,18 +63,30 @@ pub fn new_module(
       .unwrap_or_else(|| {
         let mut loaders = new_vec(scope.clone());
 
-        let mut file_loader_params = new_list(scope.clone());
-        file_loader_params.push_front(new_symbol(scope.clone(), "filename").into_value());
-        file_loader_params.push_front(new_symbol(scope.clone(), "module").into_value());
-        loaders.push_front(
+        let mut loader_params = new_list(scope.clone());
+        loader_params.push_front(new_symbol(scope.clone(), "filename").into_value());
+        loader_params.push_front(new_symbol(scope.clone(), "module").into_value());
+
+        // Order matters here
+        loaders.push(
+          new_external_function(
+            scope.clone(),
+            Some(new_symbol(scope.clone(), "dylib_loader")),
+            loader_params.clone(),
+            dylib_loader_lisp_fn,
+          )
+          .into_value(),
+        );
+        loaders.push(
           new_external_function(
             scope.clone(),
             Some(new_symbol(scope.clone(), "file_loader")),
-            file_loader_params,
+            loader_params,
             file_loader_lisp_fn,
           )
           .into_value(),
         );
+
         loaders
       })
       .into_value(),

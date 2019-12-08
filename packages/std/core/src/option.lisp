@@ -1,6 +1,6 @@
 (import def-fn "./lib")
 
-(let NONE_VALUE {})
+(def NONE_VALUE {})
 
 (def-fn option.some (value) 
   { :value value })

@@ -152,14 +152,13 @@ impl Scope {
 }
 
 #[inline]
-pub fn scope_has(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let local_scope = mut_args
+pub fn scope_has(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let local_scope = args
     .pop_front()
     .expect("Scope is nil")
     .downcast::<Object<Scope>>()
     .expect("Failed to downcast to Scope");
-  let key = mut_args
+  let key = args
     .pop_front()
     .expect("key is nil")
     .downcast::<Object<String>>()
@@ -169,14 +168,13 @@ pub fn scope_has(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Val
 }
 
 #[inline]
-pub fn scope_get(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let local_scope = mut_args
+pub fn scope_get(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let local_scope = args
     .pop_front()
     .expect("Scope is nil")
     .downcast::<Object<Scope>>()
     .expect("Failed to downcast to Scope");
-  let key = mut_args
+  let key = args
     .pop_front()
     .expect("key is nil")
     .downcast::<Object<String>>()
@@ -189,21 +187,18 @@ pub fn scope_get(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Val
 }
 
 #[inline]
-pub fn scope_set(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let mut local_scope = mut_args
+pub fn scope_set(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let mut local_scope = args
     .pop_front()
     .expect("Scope is nil")
     .downcast::<Object<Scope>>()
     .expect("Failed to downcast to Scope");
-  let key = mut_args
+  let key = args
     .pop_front()
     .expect("key is nil")
     .downcast::<Object<String>>()
     .expect("Failed to downcast to String");
-  let value = mut_args
-    .pop_front()
-    .unwrap_or(nil_value(scope).into_value());
+  let value = args.pop_front().unwrap_or(nil_value(scope).into_value());
 
   local_scope.set(key.value(), value);
   local_scope.into_value()

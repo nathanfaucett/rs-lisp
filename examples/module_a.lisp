@@ -4,6 +4,6 @@
 
 (export hello_a)
 
-(import hello_b "./module_b.lisp")
+(import hello_b "./module_b")
 
 (hello_b)

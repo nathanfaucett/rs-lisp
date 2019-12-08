@@ -50,7 +50,7 @@ impl Symbol {
   }
 
   #[inline]
-  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
+  pub(crate) fn init_kind(mut scope: Gc<Object<Scope>>) {
     let symbol_kind = new_kind::<Symbol>(scope.clone(), "Symbol");
     scope.set("Symbol", symbol_kind.into_value());
   }

@@ -8,4 +8,4 @@
 
 (println [{:a a}, {:b b}])
 
-(gc_allocator.collect default_gc_allocator)
+(println (gc_allocator.collect default_gc_allocator))

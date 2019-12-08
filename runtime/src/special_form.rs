@@ -67,7 +67,7 @@ impl SpecialForm {
   }
 
   #[inline]
-  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
+  pub(crate) fn init_kind(mut scope: Gc<Object<Scope>>) {
     let special_form_kind = new_kind::<SpecialForm>(scope.clone(), "SpecialForm");
 
     scope.set("SpecialForm", special_form_kind.into_value());

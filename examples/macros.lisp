@@ -6,12 +6,10 @@
 (def-macro def-fn (name, params, body) 
   (expand def `name (fn `name `params `body)))
 
-(def-fn add (a, b) 
-  (+ a, b))
-(def-fn add-one (a) 
-  (add a, 1))
+(def-fn equals (a, b) 
+  (= a, b))
+(def-fn equals-one (a) 
+  (equals a, 1))
 
-(println default_gc_allocator)
-
-(def x (add 2, 2))
-(add-one x)
+(println "2 == 1", (equals-one 2))
+(println "1 == 1", (equals-one 1))

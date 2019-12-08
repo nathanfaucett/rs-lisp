@@ -52,6 +52,7 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
         EvalState::If => eval_if(&mut stack),
         EvalState::Def => eval_def(&mut stack),
         EvalState::Expand => eval_expand(&mut stack),
+        EvalState::Exit => break,
       },
       None => break,
     }
@@ -84,6 +85,7 @@ fn eval_raw(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
         EvalState::If => eval_if(&mut stack),
         EvalState::Def => eval_def(&mut stack),
         EvalState::Expand => eval_expand(&mut stack),
+        EvalState::Exit => break,
       },
       None => break,
     }
@@ -432,7 +434,6 @@ fn eval_call_function(stack: &mut Stack) {
     .expect("failed to get arguments from stack")
     .downcast::<Object<List>>()
     .expect("failed to downcast arguments to List");
-  let values = arguments.to_vec();
   let callable = stack
     .value
     .pop_front()
@@ -441,10 +442,13 @@ fn eval_call_function(stack: &mut Stack) {
     .expect("failed to downcast callable to Function");
   let mut scope = new_scope(callable.scope().clone());
 
+  scope.add("arguments", arguments.clone().into_value());
+
   if let Some(name) = callable.value().name() {
     scope.add(name.value().inner(), callable.clone().into_value());
   }
 
+  let values = arguments.to_vec();
   let mut index = 0;
   let nil = nil_value(scope.clone()).into_value();
 

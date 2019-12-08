@@ -1,9 +1,7 @@
-//#![no_std]
+#![no_std]
 #![feature(arbitrary_self_types)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
-
-extern crate core;
 
 #[macro_use]
 extern crate alloc;
@@ -14,6 +12,7 @@ extern crate serde_derive;
 
 extern crate lisp_gc as gc;
 
+mod bools;
 mod context;
 mod escape;
 mod eval;
@@ -25,6 +24,7 @@ mod kind;
 mod linked_map;
 mod list;
 mod map;
+mod numbers;
 mod object;
 mod reader;
 mod scope;
@@ -34,6 +34,7 @@ mod symbol;
 mod value;
 mod vec;
 
+pub use self::bools::*;
 pub use self::context::*;
 pub use self::escape::*;
 pub use self::eval::*;
@@ -45,6 +46,7 @@ pub use self::kind::*;
 pub use self::linked_map::*;
 pub use self::list::*;
 pub use self::map::*;
+pub use self::numbers::*;
 pub use self::object::*;
 pub use self::reader::*;
 pub use self::scope::*;
