@@ -35,7 +35,7 @@ where
 pub fn eval(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
   let mut stack = Stack::new();
 
-  stack.push_scope_value(scope, value);
+  stack.push_scope_and_value(scope, value);
 
   loop {
     match stack.state.pop_front() {
@@ -52,7 +52,6 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
         EvalState::If => eval_if(&mut stack),
         EvalState::Def => eval_def(&mut stack),
         EvalState::Expand => eval_expand(&mut stack),
-        EvalState::Exit => break,
       },
       None => break,
     }
@@ -68,7 +67,7 @@ pub fn eval(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
 fn eval_raw(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
   let mut stack = Stack::new();
 
-  stack.push_scope_value(scope, value);
+  stack.push_scope_and_value(scope, value);
 
   loop {
     match stack.state.pop_front() {
@@ -85,7 +84,6 @@ fn eval_raw(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
         EvalState::If => eval_if(&mut stack),
         EvalState::Def => eval_def(&mut stack),
         EvalState::Expand => eval_expand(&mut stack),
-        EvalState::Exit => break,
       },
       None => break,
     }
@@ -503,7 +501,7 @@ fn eval_if(stack: &mut Stack) {
 
   if expr
     .downcast::<Object<bool>>()
-    .expect("failed to downcast expr as Boolean")
+    .expect("failed to downcast expr as Bool")
     .value()
     == &true
   {

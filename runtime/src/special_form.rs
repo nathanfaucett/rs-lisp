@@ -21,7 +21,7 @@ impl Trace for SpecialForm {
 impl fmt::Debug for SpecialForm {
   #[inline]
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    f.write_str("SpecialForm")
+    f.write_str(":special-form")
   }
 }
 
@@ -271,9 +271,9 @@ pub fn eval_special_form(stack: &mut Stack) {
   let mut args = stack
     .value
     .pop_front()
-    .expect("failed to get arguments for quote")
+    .expect("failed to get arguments for eval")
     .downcast::<Object<List>>()
-    .expect("failed to downcast quote arguments to List");
+    .expect("failed to downcast eval arguments to List");
 
   if let Some(value) = args.pop_front() {
     stack.value.push_front(value);

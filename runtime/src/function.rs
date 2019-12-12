@@ -2,6 +2,7 @@ use alloc::string::ToString;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::ptr;
 
 use gc::{Gc, Trace};
 
@@ -31,8 +32,7 @@ impl Trace for Function {
 impl Hash for Function {
   #[inline(always)]
   fn hash<H: Hasher>(&self, state: &mut H) {
-    self.params.hash(state);
-    self.body.hash(state);
+    ptr::hash(self, state)
   }
 }
 
@@ -53,16 +53,15 @@ impl PartialEq for Function {
 impl fmt::Debug for Function {
   #[inline]
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    let mut debug = f.debug_struct("Function");
+    let mut debug = f.debug_tuple("");
+
+    debug.field(&"fn");
 
     if let Some(name) = self.name.as_ref() {
-      debug.field("name", name);
+      debug.field(name);
     }
 
-    debug
-      .field("params", &self.params)
-      .field("body", &self.body)
-      .finish()
+    debug.field(&self.params).field(&self.body).finish()
   }
 }
 

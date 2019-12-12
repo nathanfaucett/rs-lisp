@@ -1,18 +1,33 @@
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use core::hash::{Hash, Hasher};
-use core::{mem, ptr};
+use core::{fmt, mem, ptr};
 
 use gc::{Gc, Trace};
+use hashbrown::HashMap;
 
 use super::{
-  add_external_function, new_object, new_string, new_usize, nil_value, List, Object, Scope, Value,
+  add_external_function, new_object, new_string, new_usize, nil_value, LispMap, List, Object,
+  Scope, Value,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd)]
+#[derive(Clone, PartialEq, Eq, PartialOrd)]
 pub struct Kind {
   name: String,
   size: usize,
   align: usize,
+}
+
+impl fmt::Debug for Kind {
+  #[inline]
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    let mut map = LispMap(HashMap::default());
+
+    map.0.insert("name", self.name.clone());
+    map.0.insert("size", self.size.to_string());
+    map.0.insert("align", self.align.to_string());
+
+    f.debug_tuple("").field(&"Kind").field(&map).finish()
+  }
 }
 
 impl Trace for Kind {

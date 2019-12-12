@@ -41,8 +41,7 @@ impl fmt::Debug for LinkedMap {
       let mut index = self.len();
 
       for (k, v) in self.0.iter() {
-        write!(f, "{:?}", k)?;
-        write!(f, "{:?}", v)?;
+        write!(f, "{:?} {:?}", k, v)?;
 
         index -= 1;
         if index != 0 {

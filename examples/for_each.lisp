@@ -3,7 +3,7 @@
 ))
 
 (def for-each-recur (fn for-each-recur (index, len, array, func)
-  (if (usize.eq index, len)
+  (if (= index, len)
     array
     (do
       (func (vec.get array, index), index)
