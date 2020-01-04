@@ -1,13 +1,13 @@
 use gc::Gc;
-use runtime::{call_function, new_list, new_string, Function, Map, Object, Scope, Vec};
+use runtime::{call_function, new_list, new_string, Function, Map, Object, Scope, Vector};
 
-mod file_loader;
 mod dylib;
 mod dylib_loader;
+mod file_loader;
 
-pub use self::file_loader::*;
 pub use self::dylib::*;
 pub use self::dylib_loader::*;
+pub use self::file_loader::*;
 
 #[inline]
 pub fn load(
@@ -19,8 +19,8 @@ pub fn load(
     .get(&new_string(scope.clone(), "loaders").into_value())
     .expect("Loaders is not defined in the current module")
     .clone()
-    .downcast::<Object<Vec>>()
-    .expect("Failed to downcast loaders to Vec");
+    .downcast::<Object<Vector>>()
+    .expect("Failed to downcast loaders to Vector");
 
   for value in loaders.iter() {
     let loader = value

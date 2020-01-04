@@ -2,6 +2,7 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
+use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};
 
 use gc::{Gc, Trace};
@@ -39,6 +40,22 @@ impl PartialOrd for SpecialForm {
   }
 }
 
+impl Deref for SpecialForm {
+  type Target = dyn Fn(&mut Stack);
+
+  #[inline(always)]
+  fn deref(&self) -> &Self::Target {
+    self.0.as_ref()
+  }
+}
+
+impl DerefMut for SpecialForm {
+  #[inline(always)]
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    self.0.as_mut()
+  }
+}
+
 impl Eq for SpecialForm {}
 
 impl Hash for SpecialForm {
@@ -55,15 +72,6 @@ impl SpecialForm {
     F: 'static + Fn(&mut Stack),
   {
     SpecialForm(Box::new(f))
-  }
-
-  #[inline(always)]
-  pub fn inner(&self) -> &dyn Fn(&mut Stack) {
-    &*self.0
-  }
-  #[inline(always)]
-  pub fn inner_mut(&mut self) -> &mut dyn Fn(&mut Stack) {
-    &mut *self.0
   }
 
   #[inline]
@@ -98,6 +106,12 @@ impl SpecialForm {
 
     let expand_function = new_special_form(scope.clone(), expand_special_form).into_value();
     scope.set("expand", expand_function);
+
+    let throw_function = new_special_form(scope.clone(), throw_special_form).into_value();
+    scope.set("throw", throw_function);
+
+    let try_function = new_special_form(scope.clone(), try_special_form).into_value();
+    scope.set("try", try_function);
   }
 }
 
@@ -113,14 +127,14 @@ impl<'a> FnOnce<&'a mut Stack> for SpecialForm {
 impl<'a> Fn<&'a mut Stack> for SpecialForm {
   #[inline(always)]
   extern "rust-call" fn call(&self, stack: &mut Stack) -> Self::Output {
-    self.inner()(stack)
+    self.deref()(stack)
   }
 }
 
 impl<'a> FnMut<&'a mut Stack> for SpecialForm {
   #[inline(always)]
   extern "rust-call" fn call_mut(&mut self, stack: &mut Stack) -> Self::Output {
-    self.inner_mut()(stack)
+    self.deref_mut()(stack)
   }
 }
 
@@ -332,13 +346,35 @@ pub fn expand_special_form(stack: &mut Stack) {
         .expect("failed to downcast expand value to Escape");
 
       stack.state.push_front(EvalState::Eval);
-      stack.value.push_front(escape.inner().clone());
+      stack.value.push_front(escape.escape_value().clone());
     } else {
       stack.value.push_front(value);
     }
   } else {
     stack.value.push_front(list.into_value());
   }
+}
+
+#[inline]
+pub fn throw_special_form(stack: &mut Stack) {
+  let mut args = stack
+    .value
+    .pop_front()
+    .expect("failed to get arguments for quote")
+    .downcast::<Object<List>>()
+    .expect("failed to downcast quote arguments to List");
+  let value = args.pop_front().unwrap_or_else(|| {
+    nil_value(stack.scope.front().expect("failed to get scope").clone()).into_value()
+  });
+
+  stack.state.push_front(EvalState::Throw);
+  stack.state.push_front(EvalState::Eval);
+  stack.value.push_front(value);
+}
+
+#[inline]
+pub fn try_special_form(_stack: &mut Stack) {
+  // TODO handle run block, push catch to stack
 }
 
 #[inline]

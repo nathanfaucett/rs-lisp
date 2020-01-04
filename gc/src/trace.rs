@@ -38,10 +38,37 @@ where
 {
   #[inline(always)]
   fn is_marked(&self) -> bool {
-    self.as_ref().map(|value| value.is_marked()).unwrap_or(true)
+    match self.as_ref() {
+      Some(value) => value.is_marked(),
+      None => true,
+    }
   }
   #[inline(always)]
   fn trace(&mut self, marked: bool) {
-    self.as_mut().map(|value| value.trace(marked));
+    match self.as_mut() {
+      Some(value) => value.trace(marked),
+      None => {}
+    }
+  }
+}
+
+impl<T, E> Trace for Result<T, E>
+where
+  T: Trace,
+  E: Trace,
+{
+  #[inline(always)]
+  fn is_marked(&self) -> bool {
+    match self.as_ref() {
+      Ok(ok) => ok.is_marked(),
+      Err(err) => err.is_marked(),
+    }
+  }
+  #[inline(always)]
+  fn trace(&mut self, marked: bool) {
+    match self.as_mut() {
+      Ok(ok) => ok.trace(marked),
+      Err(err) => err.trace(marked),
+    }
   }
 }

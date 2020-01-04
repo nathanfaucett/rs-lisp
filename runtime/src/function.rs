@@ -100,8 +100,8 @@ impl Function {
   }
 
   #[inline(always)]
-  pub fn name(&self) -> &Option<Gc<Object<Symbol>>> {
-    &self.name
+  pub fn name(&self) -> Option<&Gc<Object<Symbol>>> {
+    self.name.as_ref()
   }
   #[inline(always)]
   pub fn scope(&self) -> &Gc<Object<Scope>> {

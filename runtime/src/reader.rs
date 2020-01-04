@@ -7,13 +7,15 @@ use gc::Gc;
 
 use super::{
   new_char, new_escape, new_i16, new_i32, new_i64, new_i8, new_isize, new_keyword, new_list,
-  new_map, new_string, new_symbol, new_u16, new_u32, new_u64, new_u8, new_usize, new_vec,
-  nil_value, Escape, Keyword, List, Map, Object, Scope, Symbol, Value, Vec,
+  new_map, new_string, new_symbol, new_u16, new_u32, new_u64, new_u8, new_usize, new_vector,
+  nil_value, Escape, Keyword, List, Map, Object, Scope, Symbol, Value, Vector,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Reader {
   index: usize,
+  line: usize,
+  col: usize,
   chars: vec::Vec<char>,
 }
 
@@ -22,11 +24,27 @@ impl Reader {
   pub fn new(chars: vec::Vec<char>) -> Self {
     Reader {
       index: 0,
+      line: 1,
+      col: 0,
       chars: chars,
     }
   }
   #[inline]
+  pub fn line(&self) -> usize {
+    self.line
+  }
+  #[inline]
+  pub fn col(&self) -> usize {
+    self.col
+  }
+  #[inline]
   fn consume(&mut self) -> &mut Self {
+    if self.peek().map(is_newline).unwrap_or(false) {
+      self.line += 1;
+      self.col = 0;
+    } else {
+      self.col += 1;
+    }
     self.index += 1;
     self
   }
@@ -103,6 +121,10 @@ pub fn read_value(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<dyn Value
 fn read_list(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<List>> {
   let mut list = new_list(scope.clone());
 
+  list
+    .meta_mut()
+    .map(|meta| add_meta(meta.clone(), scope.clone(), reader));
+
   while let Some(ch) = reader.peek() {
     if ch == ')' {
       reader.consume();
@@ -118,8 +140,12 @@ fn read_list(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<List>> 
 }
 
 #[inline]
-fn read_vec(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Vec>> {
-  let mut vec = new_vec(scope.clone());
+fn read_vec(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Vector>> {
+  let mut vec = new_vector(scope.clone());
+
+  vec
+    .meta_mut()
+    .map(|meta| add_meta(meta.clone(), scope.clone(), reader));
 
   while let Some(ch) = reader.peek() {
     if ch == ']' {
@@ -138,6 +164,10 @@ fn read_vec(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Vec>> {
 #[inline]
 fn read_map(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Map>> {
   let mut map = new_map(scope.clone());
+
+  map
+    .meta_mut()
+    .map(|meta| add_meta(meta.clone(), scope.clone(), reader));
 
   while let Some(ch) = reader.peek() {
     if ch == '}' {
@@ -179,7 +209,13 @@ fn read_symbol(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Symbo
     }
   }
 
-  new_symbol(scope, string)
+  let mut symbol = new_symbol(scope.clone(), string);
+
+  symbol
+    .meta_mut()
+    .map(|meta| add_meta(meta.clone(), scope.clone(), reader));
+
+  symbol
 }
 
 #[inline]
@@ -195,7 +231,13 @@ fn read_keyword(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Keyw
     }
   }
 
-  new_keyword(scope, string)
+  let mut keyword = new_keyword(scope.clone(), string);
+
+  keyword
+    .meta_mut()
+    .map(|meta| add_meta(meta.clone(), scope.clone(), reader));
+
+  keyword
 }
 
 #[inline]
@@ -206,7 +248,7 @@ fn read_escape(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Escap
 #[inline]
 fn read_comment(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<dyn Value> {
   while let Some(ch) = reader.peek() {
-    if ch == '\n' {
+    if is_newline(ch) {
       break;
     } else {
       reader.consume();
@@ -227,7 +269,13 @@ fn read_string(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<Strin
     }
   }
 
-  new_string(scope, string)
+  let mut string = new_string(scope.clone(), string);
+
+  string
+    .meta_mut()
+    .map(|meta| add_meta(meta.clone(), scope.clone(), reader));
+
+  string
 }
 
 #[inline]
@@ -244,7 +292,12 @@ fn read_char(scope: Gc<Object<Scope>>, reader: &mut Reader) -> Gc<Object<char>> 
 
   // TODO: actually get a char
   let ch = string.chars().nth(0).expect("failed to get char");
-  new_char(scope, ch)
+  let mut ch = new_char(scope.clone(), ch);
+
+  ch.meta_mut()
+    .map(|meta| add_meta(meta.clone(), scope.clone(), reader));
+
+  ch
 }
 
 #[inline]
@@ -317,8 +370,8 @@ fn read_number(scope: Gc<Object<Scope>>, reader: &mut Reader, ch: char) -> Gc<dy
     }
   }
 
-  match typ_char {
-    'u' => match from_uint(scope, &string, &typ_size) {
+  let number = match typ_char {
+    'u' => match from_uint(scope.clone(), &string, &typ_size) {
       Ok(n) => n,
       // Err(_) => new_nan_f32(scope).into_value(),
       Err(_) => unimplemented!(),
@@ -328,12 +381,18 @@ fn read_number(scope: Gc<Object<Scope>>, reader: &mut Reader, ch: char) -> Gc<dy
     //     Err(_) => new_nan_f64(scope).into_value(),
     // },
     // 'i'
-    _ => match from_int(scope, &string, &typ_size) {
+    _ => match from_int(scope.clone(), &string, &typ_size) {
       Ok(n) => n,
       // Err(_) => new_nan_f32(scope).into_value(),
       Err(_) => unimplemented!(),
     },
-  }
+  };
+
+  number
+    .meta()
+    .map(|meta| add_meta(meta.clone(), scope.clone(), reader));
+
+  number
 }
 
 #[inline]
@@ -377,6 +436,23 @@ fn from_uint(
 //         _ => new_f64(scope, f64::from_str(value)?).into_value(),
 //     })
 // }
+
+#[inline]
+fn add_meta(mut meta: Gc<Object<Map>>, scope: Gc<Object<Scope>>, reader: &mut Reader) {
+  meta.set(
+    new_string(scope.clone(), "line").into_value(),
+    new_usize(scope.clone(), reader.line()).into_value(),
+  );
+  meta.set(
+    new_string(scope.clone(), "col").into_value(),
+    new_usize(scope.clone(), reader.line()).into_value(),
+  );
+}
+
+#[inline]
+fn is_newline(ch: char) -> bool {
+  ch == '\n'
+}
 
 #[inline]
 fn is_whitespace(ch: char) -> bool {

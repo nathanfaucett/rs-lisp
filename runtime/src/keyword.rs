@@ -1,5 +1,6 @@
 use alloc::string::{String, ToString};
 use core::fmt::{self, Write};
+use core::ops::{Deref, DerefMut};
 
 use gc::{Gc, Trace};
 
@@ -36,19 +37,26 @@ impl Into<String> for Keyword {
   }
 }
 
+impl Deref for Keyword {
+  type Target = String;
+
+  #[inline(always)]
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl DerefMut for Keyword {
+  #[inline(always)]
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    &mut self.0
+  }
+}
+
 impl Keyword {
   #[inline]
   pub fn new(value: String) -> Self {
     Keyword(value)
-  }
-
-  #[inline]
-  pub fn inner(&self) -> &String {
-    &self.0
-  }
-  #[inline]
-  pub fn inner_mut(&mut self) -> &mut String {
-    &mut self.0
   }
 
   #[inline]

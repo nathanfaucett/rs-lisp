@@ -1,4 +1,5 @@
 use core::fmt::{self, Write};
+use core::ops::{Deref, DerefMut};
 
 use gc::{Gc, Trace};
 
@@ -29,6 +30,22 @@ impl Into<Gc<dyn Value>> for Escape {
   }
 }
 
+impl Deref for Escape {
+  type Target = Gc<dyn Value>;
+
+  #[inline(always)]
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl DerefMut for Escape {
+  #[inline(always)]
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    &mut self.0
+  }
+}
+
 impl Escape {
   #[inline]
   pub fn new(value: Gc<dyn Value>) -> Self {
@@ -36,12 +53,8 @@ impl Escape {
   }
 
   #[inline]
-  pub fn inner(&self) -> &Gc<dyn Value> {
+  pub fn escape_value(&self) -> &Gc<dyn Value> {
     &self.0
-  }
-  #[inline]
-  pub fn inner_mut(&mut self) -> &mut Gc<dyn Value> {
-    &mut self.0
   }
 
   #[inline]

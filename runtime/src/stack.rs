@@ -5,7 +5,7 @@ use core::{fmt, ptr};
 
 use gc::{Gc, Trace};
 
-use super::{Object, Scope, Value};
+use super::{Function, Object, Scope, Value};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EvalState {
@@ -18,15 +18,25 @@ pub enum EvalState {
   CallFunctionEvalArgs,
   PopValue,
   PopScope,
+  Throw,
+  Catch,
   If,
   Def,
   Expand,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PopResult {
+  Caught(Gc<dyn Value>),
+  Callable(Gc<Object<Function>>),
+  Uncaught,
 }
 
 #[derive(Clone, Eq)]
 pub struct Stack {
   pub(crate) value: LinkedList<Gc<dyn Value>>,
   pub(crate) scope: LinkedList<Gc<Object<Scope>>>,
+  pub(crate) callable: LinkedList<Gc<Object<Function>>>,
   pub(crate) state: LinkedList<EvalState>,
 }
 
@@ -66,8 +76,32 @@ impl Stack {
     Stack {
       value: LinkedList::new(),
       scope: LinkedList::new(),
+      callable: LinkedList::new(),
       state: LinkedList::new(),
     }
+  }
+
+  #[inline]
+  pub(crate) fn pop(&mut self) -> PopResult {
+    match self.state.pop_front() {
+      Some(EvalState::Catch) => {
+        return PopResult::Caught(
+          self
+            .value
+            .pop_front()
+            .expect("no function was passed to caught block"),
+        );
+      }
+      Some(EvalState::CallFunction) => {
+        let callable = self
+          .callable
+          .pop_front()
+          .expect("no function was in the stack");
+        return PopResult::Callable(callable);
+      }
+      _ => {}
+    }
+    PopResult::Uncaught
   }
 
   #[inline]

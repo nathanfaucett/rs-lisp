@@ -106,6 +106,11 @@ where
   }
 
   #[inline(always)]
+  fn meta(&self) -> Option<&Gc<Object<Map>>> {
+    self.meta.as_ref()
+  }
+
+  #[inline(always)]
   fn debug(&self, f: &mut fmt::Formatter) -> fmt::Result {
     Debug::fmt(&self.value, f)
   }

@@ -5,10 +5,11 @@ use core::hash::{Hash, Hasher};
 
 use gc::{Gc, Trace};
 
-use super::{add_external_function, new_bool, nil_value, Kind, List, Object, Scope};
+use super::{add_external_function, new_bool, nil_value, Kind, List, Map, Object, Scope};
 
 pub trait Value: Any {
   fn kind(&self) -> &Gc<Object<Kind>>;
+  fn meta(&self) -> Option<&Gc<Object<Map>>>;
   fn debug(&self, f: &mut fmt::Formatter) -> fmt::Result;
   fn compare(&self, other: &dyn Value) -> Option<Ordering>;
   fn hash(&self, hasher: &mut dyn Hasher);

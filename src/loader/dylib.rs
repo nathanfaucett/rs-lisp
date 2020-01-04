@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 use std::ptr;
 
 use gc::{Gc, Trace};
@@ -107,8 +108,8 @@ pub fn dylib_call(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dy
 
   unsafe {
     dylib
-      .call(name.inner(), scope, args)
-      .expect(&format!("Failed to call dylib function {}", name.inner()))
+      .call(name.deref(), scope, args)
+      .expect(&format!("Failed to call dylib function {}", name.deref()))
   }
 }
 

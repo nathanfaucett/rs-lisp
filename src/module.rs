@@ -1,10 +1,12 @@
+use std::ops::Deref;
+
 use gc::Gc;
 use runtime::{
-  new_external_function, new_list, new_map, new_string, new_symbol, new_vec, nil_value, List, Map,
-  Object, Scope, Symbol, Value, Vec,
+  new_external_function, new_list, new_map, new_string, new_symbol, new_vector, nil_value, List,
+  Map, Object, Scope, Symbol, Value, Vector,
 };
 
-use super::{file_loader_lisp_fn, get_scope_root, load, dylib_loader_lisp_fn};
+use super::{dylib_loader_lisp_fn, file_loader_lisp_fn, get_scope_root, load};
 
 #[inline]
 pub fn new_module(
@@ -57,11 +59,11 @@ pub fn new_module(
           .get(&loaders_string)
           .expect("failed to get loaders from parent module")
           .clone()
-          .downcast::<Object<Vec>>()
+          .downcast::<Object<Vector>>()
           .expect("failed to downcast loaders to Vec")
       })
       .unwrap_or_else(|| {
-        let mut loaders = new_vec(scope.clone());
+        let mut loaders = new_vector(scope.clone());
 
         let mut loader_params = new_list(scope.clone());
         loader_params.push_front(new_symbol(scope.clone(), "filename").into_value());
@@ -124,14 +126,14 @@ pub fn import(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Va
       .downcast_ref::<Object<Symbol>>()
       .expect("failed to downcast import_name to Symbol");
     let import_value = exports
-      .get(&new_string(scope.clone(), import_name.value().inner()).into_value())
+      .get(&new_string(scope.clone(), import_name.value().deref()).into_value())
       .expect(&format!(
         "no such import {:?} defined in {:?}",
-        import_name.value().inner(),
+        import_name.value().deref(),
         filename.value()
       ))
       .clone();
-    caller_scope.set(import_name.value().inner(), import_value);
+    caller_scope.set(import_name.value().deref(), import_value);
   }
 
   nil_value(scope).into_value()
@@ -157,11 +159,11 @@ pub fn export(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value>
       .downcast_ref::<Object<Symbol>>()
       .expect("failed to downcast import_name to Symbol");
     let export_value = scope
-      .get(export_name.value().inner())
+      .get(export_name.value().deref())
       .expect("no such value defined")
       .clone();
     exports.set(
-      new_string(scope.clone(), export_name.value().inner()).into_value(),
+      new_string(scope.clone(), export_name.value().deref()).into_value(),
       export_value,
     );
   }

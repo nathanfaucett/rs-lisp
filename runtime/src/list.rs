@@ -2,6 +2,7 @@ use alloc::collections::linked_list::{IntoIter, Iter, IterMut};
 use alloc::collections::LinkedList;
 use core::fmt::{self, Write};
 use core::hash::{Hash, Hasher};
+use core::ops::{Deref, DerefMut};
 use core::ptr;
 
 use gc::{Gc, Trace};
@@ -21,26 +22,29 @@ impl Hash for List {
   }
 }
 
+impl From<LinkedList<Gc<dyn Value>>> for List {
+  #[inline]
+  fn from(list: LinkedList<Gc<dyn Value>>) -> Self {
+    List(list)
+  }
+}
+
 impl fmt::Debug for List {
   #[inline]
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    if self.is_empty() {
-      f.write_str("()")
-    } else {
-      f.write_char('(')?;
-      let mut index = self.len();
+    f.write_char('(')?;
+    let mut index = self.len();
 
-      for value in self.0.iter() {
-        write!(f, "{:?}", value)?;
+    for value in self.0.iter() {
+      write!(f, "{:?}", value)?;
 
-        index -= 1;
-        if index != 0 {
-          write!(f, ", ")?;
-        }
+      index -= 1;
+      if index != 0 {
+        write!(f, ", ")?;
       }
-
-      f.write_char(')')
     }
+
+    f.write_char(')')
   }
 }
 
@@ -83,86 +87,26 @@ impl Trace for List {
   }
 }
 
+impl Deref for List {
+  type Target = LinkedList<Gc<dyn Value>>;
+
+  #[inline(always)]
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl DerefMut for List {
+  #[inline(always)]
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    &mut self.0
+  }
+}
+
 impl List {
   #[inline]
   pub fn new() -> Self {
     List(LinkedList::new())
-  }
-
-  #[inline]
-  pub fn is_empty(&self) -> bool {
-    self.0.is_empty()
-  }
-
-  #[inline]
-  pub fn len(&self) -> usize {
-    self.0.len()
-  }
-
-  #[inline]
-  pub fn push(&mut self, value: Gc<dyn Value>) -> &mut Self {
-    self.0.push_front(value);
-    self
-  }
-  #[inline]
-  pub fn push_front(&mut self, value: Gc<dyn Value>) -> &mut Self {
-    self.push(value)
-  }
-  #[inline]
-  pub fn push_back(&mut self, value: Gc<dyn Value>) -> &mut Self {
-    self.0.push_back(value);
-    self
-  }
-
-  #[inline]
-  pub fn pop_front(&mut self) -> Option<Gc<dyn Value>> {
-    self.0.pop_front()
-  }
-  #[inline]
-  pub fn pop_back(&mut self) -> Option<Gc<dyn Value>> {
-    self.0.pop_back()
-  }
-
-  #[inline]
-  pub fn front(&self) -> Option<&Gc<dyn Value>> {
-    self.0.front()
-  }
-  #[inline]
-  pub fn back(&self) -> Option<&Gc<dyn Value>> {
-    self.0.back()
-  }
-
-  #[inline]
-  pub fn front_mut(&mut self) -> Option<&mut Gc<dyn Value>> {
-    self.0.front_mut()
-  }
-  #[inline]
-  pub fn back_mut(&mut self) -> Option<&mut Gc<dyn Value>> {
-    self.0.back_mut()
-  }
-
-  #[inline]
-  pub fn append(&mut self, list: &mut List) -> &mut Self {
-    self.0.append(&mut list.0);
-    self
-  }
-
-  #[inline]
-  pub fn to_vec(&self) -> ::alloc::vec::Vec<Gc<dyn Value>> {
-    self
-      .0
-      .iter()
-      .map(Clone::clone)
-      .collect::<::alloc::vec::Vec<Gc<dyn Value>>>()
-  }
-
-  #[inline]
-  pub fn iter(&self) -> Iter<Gc<dyn Value>> {
-    self.0.iter()
-  }
-  #[inline]
-  pub fn iter_mut(&mut self) -> IterMut<Gc<dyn Value>> {
-    self.0.iter_mut()
   }
 
   #[inline]
@@ -279,5 +223,5 @@ pub fn new_list(scope: Gc<Object<Scope>>) -> Gc<Object<List>> {
 
 #[inline]
 pub fn new_list_from(scope: Gc<Object<Scope>>, list: List) -> Gc<Object<List>> {
-  new_object(scope.clone(), Object::new(list_kind(scope), list.clone()))
+  new_object(scope.clone(), Object::new(list_kind(scope), list))
 }

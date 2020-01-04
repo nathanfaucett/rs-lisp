@@ -1,5 +1,6 @@
 use alloc::string::{String, ToString};
 use core::fmt;
+use core::ops::{Deref, DerefMut};
 
 use gc::{Gc, Trace};
 
@@ -34,19 +35,26 @@ impl Into<String> for Symbol {
   }
 }
 
+impl Deref for Symbol {
+  type Target = String;
+
+  #[inline(always)]
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl DerefMut for Symbol {
+  #[inline(always)]
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    &mut self.0
+  }
+}
+
 impl Symbol {
   #[inline]
   pub fn new(value: String) -> Self {
     Symbol(value)
-  }
-
-  #[inline]
-  pub fn inner(&self) -> &String {
-    &self.0
-  }
-  #[inline]
-  pub fn inner_mut(&mut self) -> &mut String {
-    &mut self.0
   }
 
   #[inline]

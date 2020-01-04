@@ -1,10 +1,11 @@
 use core::cmp::Ordering;
 use core::fmt::{self, Write};
 use core::hash::{Hash, Hasher};
+use core::ops::{Deref, DerefMut};
 use core::ptr;
 
 use gc::{Gc, Trace};
-use hashbrown::hash_map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
+use hashbrown::hash_map::{IntoIter, Iter, IterMut};
 use hashbrown::HashMap;
 
 use super::{
@@ -31,6 +32,13 @@ impl Trace for Map {
       }
       v.trace(marked);
     }
+  }
+}
+
+impl From<HashMap<Gc<dyn Value>, Gc<dyn Value>>> for Map {
+  #[inline]
+  fn from(map: HashMap<Gc<dyn Value>, Gc<dyn Value>>) -> Self {
+    Map(map)
   }
 }
 
@@ -90,20 +98,26 @@ impl<'a> IntoIterator for &'a mut Map {
   }
 }
 
+impl Deref for Map {
+  type Target = HashMap<Gc<dyn Value>, Gc<dyn Value>>;
+
+  #[inline(always)]
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl DerefMut for Map {
+  #[inline(always)]
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    &mut self.0
+  }
+}
+
 impl Map {
   #[inline]
   pub fn new() -> Self {
     Map(HashMap::default())
-  }
-
-  #[inline]
-  pub fn is_empty(&self) -> bool {
-    self.0.is_empty()
-  }
-
-  #[inline]
-  pub fn len(&self) -> usize {
-    self.0.len()
   }
 
   #[inline]
@@ -113,43 +127,8 @@ impl Map {
   }
 
   #[inline]
-  pub fn remove(&mut self, key: &Gc<dyn Value>) -> Option<Gc<dyn Value>> {
-    self.0.remove(key)
-  }
-
-  #[inline]
   pub fn has(&self, key: &Gc<dyn Value>) -> bool {
     self.0.contains_key(key)
-  }
-  #[inline]
-  pub fn get(&self, key: &Gc<dyn Value>) -> Option<&Gc<dyn Value>> {
-    self.0.get(key)
-  }
-  #[inline]
-  pub fn get_mut(&mut self, key: &Gc<dyn Value>) -> Option<&mut Gc<dyn Value>> {
-    self.0.get_mut(key)
-  }
-
-  #[inline]
-  pub fn keys(&self) -> Keys<Gc<dyn Value>, Gc<dyn Value>> {
-    self.0.keys()
-  }
-  #[inline]
-  pub fn values(&self) -> Values<Gc<dyn Value>, Gc<dyn Value>> {
-    self.0.values()
-  }
-  #[inline]
-  pub fn values_mut(&mut self) -> ValuesMut<Gc<dyn Value>, Gc<dyn Value>> {
-    self.0.values_mut()
-  }
-
-  #[inline]
-  pub fn iter(&self) -> Iter<Gc<dyn Value>, Gc<dyn Value>> {
-    self.0.iter()
-  }
-  #[inline]
-  pub fn iter_mut(&mut self) -> IterMut<Gc<dyn Value>, Gc<dyn Value>> {
-    self.0.iter_mut()
   }
 
   #[inline]
@@ -263,4 +242,9 @@ pub fn map_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
 #[inline]
 pub fn new_map(scope: Gc<Object<Scope>>) -> Gc<Object<Map>> {
   new_object(scope.clone(), Object::new(map_kind(scope), Map::new()))
+}
+
+#[inline]
+pub fn new_map_from(scope: Gc<Object<Scope>>, map: Map) -> Gc<Object<Map>> {
+  new_object(scope.clone(), Object::new(map_kind(scope), map))
 }

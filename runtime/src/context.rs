@@ -1,9 +1,10 @@
 use alloc::string::{String, ToString};
 
 use super::{
-  init_bool_kind, init_bool_scope, init_numbers_kind, init_numbers_scope, new_kind, new_object,
-  Escape, Function, GcAllocator, Keyword, Kind, LinkedMap, List, Map, Object, Scope, SpecialForm,
-  Symbol, Value, Vec,
+  add_external_function, init_bool_kind, init_bool_scope, init_numbers_kind, init_numbers_scope,
+  new_kind, new_object, Escape, Function, GcAllocator, Keyword, Kind, LinkedMap, List, Map, Object,
+  PersistentList, PersistentMap, PersistentSet, PersistentVector, Scope, Set, SpecialForm, Symbol,
+  Value, Vector,
 };
 use gc::Gc;
 
@@ -24,8 +25,13 @@ pub fn new_context() -> Gc<Object<Scope>> {
     Escape::init_kind(scope.clone());
     List::init_kind(scope.clone());
     LinkedMap::init_kind(scope.clone());
-    Vec::init_kind(scope.clone());
+    Vector::init_kind(scope.clone());
     Map::init_kind(scope.clone());
+    Set::init_kind(scope.clone());
+    PersistentList::init_kind(scope.clone());
+    PersistentMap::init_kind(scope.clone());
+    PersistentSet::init_kind(scope.clone());
+    PersistentVector::init_kind(scope.clone());
 
     init_numbers_scope(scope.clone());
     init_bool_scope(scope.clone());
@@ -35,11 +41,32 @@ pub fn new_context() -> Gc<Object<Scope>> {
     Scope::init_scope(scope.clone());
     List::init_scope(scope.clone());
     LinkedMap::init_scope(scope.clone());
-    Vec::init_scope(scope.clone());
+    Vector::init_scope(scope.clone());
     Map::init_scope(scope.clone());
+    Set::init_scope(scope.clone());
+    PersistentList::init_scope(scope.clone());
+    PersistentMap::init_scope(scope.clone());
+    PersistentSet::init_scope(scope.clone());
+    PersistentVector::init_scope(scope.clone());
+
+    add_external_function(
+      scope.clone(),
+      "global_error_handler",
+      vec!["error"],
+      global_error_handler,
+    );
 
     scope
   }
+}
+
+#[inline]
+fn global_error_handler(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+  let error = args
+    .pop_front()
+    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+
+  panic!("{:?}", error)
 }
 
 #[inline]
