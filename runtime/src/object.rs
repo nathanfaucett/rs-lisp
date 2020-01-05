@@ -6,7 +6,7 @@ use core::ops::{Deref, DerefMut};
 
 use gc::{Gc, Trace};
 
-use super::{GcAllocator, Kind, Map, Scope, Value};
+use super::{scope_get_mut_with_kind, GcAllocator, Kind, Map, PersistentScope, Value};
 
 #[derive(Clone)]
 pub struct Object<T> {
@@ -56,6 +56,11 @@ impl<T> Object<T> {
   #[inline(always)]
   pub fn meta_mut(&mut self) -> Option<&mut Gc<Object<Map>>> {
     self.meta.as_mut()
+  }
+  #[inline(always)]
+  pub fn set_meta(&mut self, meta: Gc<Object<Map>>) -> &mut Self {
+    self.meta.replace(meta);
+    self
   }
 }
 
@@ -237,14 +242,11 @@ where
 }
 
 #[inline]
-pub fn new_object<T>(scope: Gc<Object<Scope>>, object: Object<T>) -> Gc<Object<T>>
+pub fn new_object<T>(scope: &Gc<Object<PersistentScope>>, object: Object<T>) -> Gc<Object<T>>
 where
   T: PartialEq + PartialOrd + Hash + Debug + Trace + 'static,
 {
-  unsafe {
-    let mut gc_allocator = scope
-      .get_with_kind::<GcAllocator>("default_gc_allocator")
-      .unwrap();
-    gc_allocator.alloc(object)
-  }
+  scope_get_mut_with_kind::<GcAllocator>(scope, "default_gc_allocator")
+    .expect("failed to get default_gc_allocator")
+    .alloc(object)
 }

@@ -1,6 +1,7 @@
 use alloc::vec::{IntoIter, Vec};
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::iter::FromIterator;
 use core::ops::Deref;
 use core::ptr;
 use core::slice::Iter;
@@ -8,8 +9,8 @@ use core::slice::Iter;
 use gc::{Gc, Trace};
 
 use super::{
-  add_external_function, new_bool, new_kind, new_object, new_usize, nil_value, Kind, List, Object,
-  Scope, Value,
+  add_external_function, new_bool, new_kind, new_object, new_usize, nil_value, scope_get_with_kind,
+  scope_set, Kind, Map, Object, PersistentScope, Value,
 };
 
 #[derive(Clone, Eq, PartialEq, PartialOrd)]
@@ -71,6 +72,19 @@ impl<'a> IntoIterator for &'a PersistentVector {
   }
 }
 
+impl<'a> FromIterator<&'a Gc<dyn Value>> for PersistentVector {
+  #[inline]
+  fn from_iter<I: IntoIterator<Item = &'a Gc<dyn Value>>>(iter: I) -> Self {
+    let mut persistent_vector = PersistentVector::new();
+
+    for value in iter {
+      persistent_vector = persistent_vector.push(value.clone());
+    }
+
+    persistent_vector
+  }
+}
+
 impl Deref for PersistentVector {
   type Target = Vec<Gc<dyn Value>>;
 
@@ -92,6 +106,7 @@ impl PersistentVector {
     new_persistent_vector.insert(index, value);
     Self::from(new_persistent_vector)
   }
+
   #[inline]
   pub fn push_front(&self, value: Gc<dyn Value>) -> Self {
     let mut new_persistent_vector = self.0.clone();
@@ -104,67 +119,113 @@ impl PersistentVector {
     new_persistent_vector.push(value);
     Self::from(new_persistent_vector)
   }
-
   #[inline]
-  pub(crate) fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let persistent_vector_kind = new_kind::<PersistentVector>(scope.clone(), "PersistentVector");
-    scope.set(
-      "PersistentVector",
-      persistent_vector_kind.clone().into_value(),
-    );
+  pub fn push(&self, value: Gc<dyn Value>) -> Self {
+    self.push_back(value)
   }
 
   #[inline]
-  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
-    add_external_function(
-      scope.clone(),
+  pub fn pop_front(&self) -> Self {
+    let mut new_persistent_vector = self.0.clone();
+    new_persistent_vector.remove(0);
+    Self::from(new_persistent_vector)
+  }
+  #[inline]
+  pub fn pop_back(&self) -> Self {
+    let mut new_persistent_vector = self.0.clone();
+    new_persistent_vector.pop();
+    Self::from(new_persistent_vector)
+  }
+
+  #[inline]
+  pub fn front(&self) -> Option<&Gc<dyn Value>> {
+    self.0.get(0)
+  }
+  #[inline]
+  pub fn front_mut(&mut self) -> Option<&mut Gc<dyn Value>> {
+    self.0.get_mut(0)
+  }
+
+  #[inline]
+  pub fn back(&self) -> Option<&Gc<dyn Value>> {
+    if self.is_empty() {
+      None
+    } else {
+      let index = self.0.len() - 1;
+      self.0.get(index)
+    }
+  }
+  #[inline]
+  pub fn back_mut(&mut self) -> Option<&mut Gc<dyn Value>> {
+    if self.is_empty() {
+      None
+    } else {
+      let index = self.0.len() - 1;
+      self.0.get_mut(index)
+    }
+  }
+
+  #[inline]
+  pub(crate) fn init_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let persistent_vector_kind = new_kind::<PersistentVector>(scope, "PersistentVector");
+    scope_set(
+      scope,
+      "PersistentVector",
+      persistent_vector_kind.clone().into_value(),
+    )
+  }
+
+  #[inline]
+  pub(crate) fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let mut new_scope = add_external_function(
+      scope,
       "persistent_vector.is_empty",
       vec!["persistent_vector"],
       persistent_vector_is_empty,
     );
-    add_external_function(
-      scope.clone(),
+    new_scope = add_external_function(
+      &new_scope,
       "persistent_vector.len",
       vec!["persistent_vector"],
       persistent_vector_len,
     );
-    add_external_function(
-      scope.clone(),
+    new_scope = add_external_function(
+      &new_scope,
       "persistent_vector.nth",
       vec!["persistent_vector", "index"],
       persistent_vector_nth,
     );
-    add_external_function(
-      scope.clone(),
+    new_scope = add_external_function(
+      &new_scope,
       "persistent_vector.get",
       vec!["persistent_vector", "index"],
       persistent_vector_nth,
     );
-    add_external_function(
-      scope.clone(),
+    new_scope = add_external_function(
+      &new_scope,
       "persistent_vector.push_front",
       vec!["persistent_vector", "...args"],
       persistent_vector_push_front,
     );
-    add_external_function(
-      scope.clone(),
+    new_scope = add_external_function(
+      &new_scope,
       "persistent_vector.push_back",
       vec!["persistent_vector", "...args"],
       persistent_vector_push_back,
     );
     add_external_function(
-      scope,
+      &new_scope,
       "persistent_vector.insert",
       vec!["persistent_vector", "index", "value"],
       persistent_vector_insert,
-    );
+    )
   }
 }
 
 #[inline]
 pub fn persistent_vector_is_empty(
-  scope: Gc<Object<Scope>>,
-  args: Gc<Object<List>>,
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
 ) -> Gc<dyn Value> {
   let persistent_vector = args
     .front()
@@ -176,7 +237,10 @@ pub fn persistent_vector_is_empty(
 }
 
 #[inline]
-pub fn persistent_vector_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn persistent_vector_len(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let persistent_vector = args
     .front()
     .expect("PersistentVector is nil")
@@ -188,35 +252,33 @@ pub fn persistent_vector_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -
 
 #[inline]
 pub fn persistent_vector_nth(
-  scope: Gc<Object<Scope>>,
-  mut args: Gc<Object<List>>,
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
 ) -> Gc<dyn Value> {
-  let persistent_vector = args
-    .pop_front()
-    .expect("PersistentVector is nil")
-    .downcast::<Object<PersistentVector>>()
+  let persistent_vector_value = args.front().expect("PersistentVector is nil");
+  let persistent_vector = persistent_vector_value
+    .downcast_ref::<Object<PersistentVector>>()
     .expect("Failed to downcast to PersistentVector");
-  let nth = args
-    .pop_front()
-    .expect("nth is nil")
-    .downcast::<Object<usize>>()
+  let nth_value = args.get(1).expect("nth is nil");
+  let nth = nth_value
+    .downcast_ref::<Object<usize>>()
     .expect("Failed to downcast to USize");
 
   persistent_vector
     .get(*nth.value())
     .map(Clone::clone)
-    .unwrap_or_else(|| nil_value(scope).into_value())
+    .unwrap_or_else(|| nil_value(scope).clone().into_value())
 }
 
 #[inline]
 pub fn persistent_vector_push_front(
-  scope: Gc<Object<Scope>>,
-  mut args: Gc<Object<List>>,
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
 ) -> Gc<dyn Value> {
   let mut persistent_vector = args
-    .pop_front()
+    .front()
     .expect("PersistentVector is nil")
-    .downcast::<Object<PersistentVector>>()
+    .downcast_ref::<Object<PersistentVector>>()
     .expect("Failed to downcast argument to PersistentVector")
     .value()
     .clone();
@@ -230,13 +292,13 @@ pub fn persistent_vector_push_front(
 
 #[inline]
 pub fn persistent_vector_push_back(
-  scope: Gc<Object<Scope>>,
-  mut args: Gc<Object<List>>,
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
 ) -> Gc<dyn Value> {
   let mut persistent_vector = args
-    .pop_front()
+    .front()
     .expect("PersistentVector is nil")
-    .downcast::<Object<PersistentVector>>()
+    .downcast_ref::<Object<PersistentVector>>()
     .expect("Failed to downcast argument to PersistentVector")
     .value()
     .clone();
@@ -250,47 +312,59 @@ pub fn persistent_vector_push_back(
 
 #[inline]
 pub fn persistent_vector_insert(
-  scope: Gc<Object<Scope>>,
-  mut args: Gc<Object<List>>,
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
 ) -> Gc<dyn Value> {
-  let persistent_vector = args
-    .pop_front()
-    .expect("PersistentVector is nil")
-    .downcast::<Object<PersistentVector>>()
+  let persistent_vector_value = args.front().expect("PersistentVector is nil");
+  let persistent_vector = persistent_vector_value
+    .downcast_ref::<Object<PersistentVector>>()
     .expect("Failed to downcast argument to PersistentVector");
-  let index = args
-    .pop_front()
-    .expect("index is nil")
-    .downcast::<Object<usize>>()
+  let index_value = args.get(1).expect("index is nil");
+  let index = index_value
+    .downcast_ref::<Object<usize>>()
     .expect("Failed to downcast argument to usize");
   let value = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(2)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   new_persistent_vector_from(scope, persistent_vector.insert(*index.value(), value)).into_value()
 }
 
 #[inline]
-pub fn persistent_vector_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("PersistentVector")
-      .expect("failed to get PersistentVector Kind")
-  }
+pub fn persistent_vector_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "PersistentVector")
+    .expect("failed to get PersistentVector Kind")
 }
 
 #[inline]
-pub fn new_persistent_vector(scope: Gc<Object<Scope>>) -> Gc<Object<PersistentVector>> {
+pub fn new_persistent_vector(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentVector>> {
   new_persistent_vector_from(scope, PersistentVector::new())
 }
 
 #[inline]
 pub fn new_persistent_vector_from(
-  scope: Gc<Object<Scope>>,
+  scope: &Gc<Object<PersistentScope>>,
   persistent_vector: PersistentVector,
 ) -> Gc<Object<PersistentVector>> {
   new_object(
-    scope.clone(),
-    Object::new(persistent_vector_kind(scope), persistent_vector),
+    scope,
+    Object::new(persistent_vector_kind(scope).clone(), persistent_vector),
+  )
+}
+
+#[inline]
+pub fn new_persistent_vector_from_with_meta(
+  scope: &Gc<Object<PersistentScope>>,
+  persistent_vector: PersistentVector,
+  meta: Gc<Object<Map>>,
+) -> Gc<Object<PersistentVector>> {
+  new_object(
+    scope,
+    Object::new_with_meta(
+      persistent_vector_kind(scope).clone(),
+      persistent_vector,
+      meta,
+    ),
   )
 }

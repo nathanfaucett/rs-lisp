@@ -6,8 +6,8 @@ use gc::{Gc, Trace};
 use hashbrown::HashMap;
 
 use super::{
-  add_external_function, new_object, new_string, new_usize, nil_value, LispMap, List, Object,
-  Scope, Value,
+  add_external_function, new_object, new_string, new_usize, nil_value, scope_get_with_kind,
+  LispMap, Object, PersistentScope, PersistentVector, Value,
 };
 
 #[derive(Clone, PartialEq, Eq, PartialOrd)]
@@ -88,31 +88,39 @@ impl Kind {
   }
 
   #[inline]
-  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
-    add_external_function(scope.clone(), "kind.of", vec!["value"], kind_of);
-    add_external_function(scope.clone(), "kind.name", vec!["value"], kind_name);
-    add_external_function(scope.clone(), "kind.size", vec!["value"], kind_size);
-    add_external_function(scope, "kind.align", vec!["value"], kind_align);
+  pub(crate) fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let mut new_scope = add_external_function(scope, "kind.of", vec!["value"], kind_of);
+    new_scope = add_external_function(&new_scope, "kind.name", vec!["value"], kind_name);
+    new_scope = add_external_function(&new_scope, "kind.size", vec!["value"], kind_size);
+    add_external_function(&new_scope, "kind.align", vec!["value"], kind_align)
   }
 }
 
 #[inline]
-pub fn kind_of(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn kind_of(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope).into_value())
+    .front()
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value())
     .kind()
     .clone()
     .into_value()
 }
 
 #[inline]
-pub fn kind_name(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn kind_name(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   new_string(
-    scope.clone(),
+    scope,
     args
-      .pop_front()
-      .unwrap_or_else(|| nil_value(scope).into_value())
+      .front()
+      .map(Clone::clone)
+      .unwrap_or_else(|| nil_value(scope).clone().into_value())
       .kind()
       .name(),
   )
@@ -120,12 +128,16 @@ pub fn kind_name(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn
 }
 
 #[inline]
-pub fn kind_size(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn kind_size(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   new_usize(
-    scope.clone(),
+    scope,
     args
-      .pop_front()
-      .unwrap_or_else(|| nil_value(scope).into_value())
+      .front()
+      .map(Clone::clone)
+      .unwrap_or_else(|| nil_value(scope).clone().into_value())
       .kind()
       .size(),
   )
@@ -133,12 +145,16 @@ pub fn kind_size(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn
 }
 
 #[inline]
-pub fn kind_align(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn kind_align(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   new_usize(
-    scope.clone(),
+    scope,
     args
-      .pop_front()
-      .unwrap_or_else(|| nil_value(scope).into_value())
+      .front()
+      .map(Clone::clone)
+      .unwrap_or_else(|| nil_value(scope).clone().into_value())
       .kind()
       .align(),
   )
@@ -146,17 +162,13 @@ pub fn kind_align(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dy
 }
 
 #[inline]
-pub fn kind_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("Kind")
-      .expect("failed to get Kind Kind")
-  }
+pub fn kind_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Kind").expect("failed to get Kind Kind")
 }
 #[inline]
-pub fn new_kind<T>(scope: Gc<Object<Scope>>, name: &str) -> Gc<Object<Kind>> {
+pub fn new_kind<T>(scope: &Gc<Object<PersistentScope>>, name: &str) -> Gc<Object<Kind>> {
   new_object(
-    scope.clone(),
-    Kind::new_kind_object::<T>(kind_kind(scope), name),
+    scope,
+    Kind::new_kind_object::<T>(kind_kind(scope).clone(), name),
   )
 }

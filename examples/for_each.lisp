@@ -1,8 +1,8 @@
-(def for-each (fn for-each (array, func) 
+(def for-each (fn for-each [array, func] 
   (for-each-recur 0_usize, (vec.len array), array, func)
 ))
 
-(def for-each-recur (fn for-each-recur (index, len, array, func)
+(def for-each-recur (fn for-each-recur [index, len, array, func]
   (if (= index, len)
     array
     (do

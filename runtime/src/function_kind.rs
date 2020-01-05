@@ -4,11 +4,13 @@ use core::{fmt, ptr};
 
 use gc::{Gc, Trace};
 
-use super::{List, Object, Scope, Value};
+use super::{Object, PersistentScope, PersistentVector, Value};
 
 pub enum FunctionKind {
   Internal(Gc<dyn Value>),
-  External(Box<dyn Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>>),
+  External(
+    Box<dyn Fn(&Gc<Object<PersistentScope>>, &Gc<Object<PersistentVector>>) -> Gc<dyn Value>>,
+  ),
 }
 
 impl Trace for FunctionKind {
@@ -69,7 +71,7 @@ impl FunctionKind {
   #[inline]
   pub fn new_external<F>(body: F) -> Self
   where
-    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
+    F: 'static + Fn(&Gc<Object<PersistentScope>>, &Gc<Object<PersistentVector>>) -> Gc<dyn Value>,
   {
     FunctionKind::External(Box::new(body))
   }

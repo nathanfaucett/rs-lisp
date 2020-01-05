@@ -7,8 +7,8 @@ use core::ptr;
 use gc::{Gc, Trace};
 
 use super::{
-  add_external_function, new_bool, new_isize, new_kind, new_object, Kind, List, Object, Scope,
-  Value,
+  add_external_function, new_bool, new_isize, new_kind, new_object, scope_get_with_kind, scope_set,
+  Kind, Object, PersistentScope, PersistentVector, Value,
 };
 
 #[derive(Clone, PartialEq, PartialOrd, Eq)]
@@ -182,25 +182,33 @@ impl LinkedMap {
   }
 
   #[inline]
-  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let linked_map_kind = new_kind::<LinkedMap>(scope.clone(), "LinkedMap");
-    scope.set("LinkedMap", linked_map_kind.into_value());
+  pub(crate) fn init_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let linked_map_kind = new_kind::<LinkedMap>(scope, "LinkedMap");
+    scope_set(scope, "LinkedMap", linked_map_kind.into_value())
   }
 
   #[inline]
-  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
-    add_external_function(
-      scope.clone(),
+  pub(crate) fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let new_scope = add_external_function(
+      scope,
       "linked_map.is_empty",
       vec!["linked_map"],
       linked_map_is_empty,
     );
-    add_external_function(scope, "linked_map.len", vec!["linked_map"], linked_map_len);
+    add_external_function(
+      &new_scope,
+      "linked_map.len",
+      vec!["linked_map"],
+      linked_map_len,
+    )
   }
 }
 
 #[inline]
-pub fn linked_map_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn linked_map_is_empty(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let linked_map = args
     .front()
     .expect("LinkedMap is nil")
@@ -211,7 +219,10 @@ pub fn linked_map_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> 
 }
 
 #[inline]
-pub fn linked_map_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn linked_map_len(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let linked_map = args
     .front()
     .expect("LinkedMap is nil")
@@ -222,21 +233,17 @@ pub fn linked_map_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dy
 }
 
 #[inline]
-pub fn linked_map_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("LinkedMap")
-      .expect("failed to get LinkedMap Kind")
-  }
+pub fn linked_map_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "LinkedMap").expect("failed to get LinkedMap Kind")
 }
 
 #[inline]
 pub fn new_linked_map(
-  scope: Gc<Object<Scope>>,
+  scope: &Gc<Object<PersistentScope>>,
   linked_list: LinkedList<(Gc<dyn Value>, Gc<dyn Value>)>,
 ) -> Gc<Object<LinkedMap>> {
   new_object(
-    scope.clone(),
-    Object::new(linked_map_kind(scope), LinkedMap::from(linked_list)),
+    scope,
+    Object::new(linked_map_kind(scope).clone(), LinkedMap::from(linked_list)),
   )
 }

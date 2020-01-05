@@ -43,22 +43,27 @@ impl<T> Gc<T> {
   }
 
   #[inline(always)]
+  pub fn is_null(&self) -> bool {
+    self.ptr.is_null()
+  }
+
+  #[inline(always)]
   pub unsafe fn set_from_value(&mut self, v: T) -> &mut Self {
-    assert!(self.ptr.is_null());
+    assert!(self.is_null());
     self.ptr = Box::into_raw(Box::new(v));
     self
   }
 
   #[inline(always)]
   pub unsafe fn set_from_ptr(&mut self, ptr: *mut T) -> &mut Self {
-    assert!(self.ptr.is_null());
+    assert!(self.is_null());
     self.ptr = ptr;
     self
   }
 
   #[inline(always)]
   pub unsafe fn set_from_gc(&mut self, g: Gc<T>) -> &mut Self {
-    assert!(self.ptr.is_null());
+    assert!(self.is_null());
     self.ptr = g.as_ptr();
     self
   }
@@ -118,10 +123,10 @@ where
 
 impl<T> Gc<T>
 where
-  T: Any,
+  T: Any + ?Sized,
 {
   #[inline(always)]
-  pub fn is<V: Any>(&self) -> bool {
+  pub fn is<V: Any + ?Sized>(&self) -> bool {
     TypeId::of::<V>() == Any::type_id(self.as_ref())
   }
 
@@ -130,7 +135,7 @@ where
     &*(self as *const dyn Any as *const Gc<V>)
   }
   #[inline]
-  pub fn downcast_ref<V: Any>(&self) -> Option<&V> {
+  pub fn downcast_ref<V: Any>(&self) -> Option<&Gc<V>> {
     if self.is::<V>() {
       unsafe { Some(self.downcast_ref_unchecked()) }
     } else {
@@ -143,14 +148,19 @@ where
     &mut *(self as *mut dyn Any as *mut Gc<V>)
   }
   #[inline]
-  pub fn downcast_mut<V: Any>(&mut self) -> Option<&mut V> {
+  pub fn downcast_mut<V: Any>(&mut self) -> Option<&mut Gc<V>> {
     if self.is::<V>() {
       unsafe { Some(self.downcast_mut_unchecked()) }
     } else {
       None
     }
   }
+}
 
+impl<T> Gc<T>
+where
+  T: Any,
+{
   #[inline(always)]
   pub unsafe fn downcast_unchecked<V: Any>(self: Gc<T>) -> Gc<V> {
     mem::transmute(self)

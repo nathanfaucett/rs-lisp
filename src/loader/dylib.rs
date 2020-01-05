@@ -7,10 +7,14 @@ use std::ptr;
 use gc::{Gc, Trace};
 use libloading::{Library, Result, Symbol};
 use runtime::{
-  add_external_function, new_kind, new_object, Keyword, Kind, List, Object, Scope, Value,
+  add_external_function, new_kind, new_object, scope_get_with_kind, scope_set, Keyword, Kind,
+  Object, PersistentScope, PersistentVector, Value,
 };
 
-pub type DyLibFunction = unsafe extern "C" fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>;
+pub type DyLibFunction = unsafe extern "C" fn(
+  &Gc<Object<PersistentScope>>,
+  &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value>;
 
 pub struct DyLib {
   library: Library,
@@ -69,42 +73,47 @@ impl DyLib {
   pub unsafe fn call(
     &self,
     name: &str,
-    scope: Gc<Object<Scope>>,
-    args: Gc<Object<List>>,
+    scope: &Gc<Object<PersistentScope>>,
+    args: &Gc<Object<PersistentVector>>,
   ) -> Result<Gc<dyn Value>> {
     let func = self.get::<DyLibFunction>(name)?;
     Ok(func(scope, args))
   }
 
   #[inline]
-  pub(crate) fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let dylib_kind = new_kind::<DyLib>(scope.clone(), "DyLib");
-    scope.set("DyLib", dylib_kind.into_value());
+  pub(crate) fn init_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let dylib_kind = new_kind::<DyLib>(scope, "DyLib");
+    scope_set(scope, "DyLib", dylib_kind.into_value())
   }
 
   #[inline]
-  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
+  pub(crate) fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
     add_external_function(
-      scope.clone(),
+      scope,
       "dylib.call",
       vec!["dylib", "name", "...args"],
       dylib_call,
-    );
+    )
   }
 }
 
 #[inline]
-pub fn dylib_call(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn dylib_call(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let dylib = args
-    .pop_front()
+    .get(0)
     .expect("DyLib is nil")
-    .downcast::<Object<DyLib>>()
-    .expect("Failed to downcast dylib to DyLib");
+    .downcast_ref::<Object<DyLib>>()
+    .expect("Failed to downcast dylib to DyLib")
+    .clone();
   let name = args
-    .pop_front()
+    .get(1)
     .expect("name is nil")
-    .downcast::<Object<Keyword>>()
-    .expect("Failed to downcast name to Keyword");
+    .downcast_ref::<Object<Keyword>>()
+    .expect("Failed to downcast name to Keyword")
+    .clone();
 
   unsafe {
     dylib
@@ -114,20 +123,16 @@ pub fn dylib_call(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dy
 }
 
 #[inline]
-pub fn dylib_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("DyLib")
-      .expect("failed to get DyLib Kind")
-  }
+pub fn dylib_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "DyLib").expect("failed to get DyLib Kind")
 }
 #[inline]
-pub fn new_dylib<T>(scope: Gc<Object<Scope>>, path: T) -> Gc<Object<DyLib>>
+pub fn new_dylib<T>(scope: &Gc<Object<PersistentScope>>, path: T) -> Gc<Object<DyLib>>
 where
   T: ToString,
 {
   new_object(
-    scope.clone(),
-    Object::new(dylib_kind(scope), DyLib::new(path)),
+    scope,
+    Object::new(dylib_kind(scope).clone(), DyLib::new(path)),
   )
 }

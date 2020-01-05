@@ -3,7 +3,9 @@ use core::ops::{Deref, DerefMut};
 
 use gc::{Gc, Trace};
 
-use super::{new_kind, new_object, Kind, Object, Scope, Value};
+use super::{
+  new_kind, new_object, scope_get_with_kind, scope_set, Kind, Object, PersistentScope, Value,
+};
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Hash)]
 pub struct Escape(Gc<dyn Value>);
@@ -58,24 +60,22 @@ impl Escape {
   }
 
   #[inline]
-  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let escape_kind = new_kind::<Escape>(scope.clone(), "Escape");
-    scope.set("Escape", escape_kind.into_value());
+  pub(crate) unsafe fn init_kind(
+    scope: &Gc<Object<PersistentScope>>,
+  ) -> Gc<Object<PersistentScope>> {
+    let escape_kind = new_kind::<Escape>(scope, "Escape");
+    scope_set(scope, "Escape", escape_kind.into_value())
   }
 }
 
 #[inline]
-pub fn escape_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("Escape")
-      .expect("failed to get Escape Kind")
-  }
+pub fn escape_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Escape").expect("failed to get Escape Kind")
 }
 #[inline]
-pub fn new_escape(scope: Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<Object<Escape>> {
+pub fn new_escape(scope: &Gc<Object<PersistentScope>>, value: Gc<dyn Value>) -> Gc<Object<Escape>> {
   new_object(
-    scope.clone(),
-    Object::new(escape_kind(scope), Escape::new(value)),
+    scope,
+    Object::new(escape_kind(scope).clone(), Escape::new(value)),
   )
 }

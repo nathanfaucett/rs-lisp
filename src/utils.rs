@@ -1,19 +1,22 @@
 use std::string::ToString;
 
 use gc::Gc;
-use runtime::{run, Object, Scope, Value};
+use runtime::{run, scope_parent, Object, PersistentScope, Value};
 
 #[inline]
-pub fn get_scope_root(scope: Gc<Object<Scope>>) -> Gc<Object<Scope>> {
-  if let Some(parent) = scope.parent() {
-    get_scope_root(parent.clone())
+pub fn get_scope_root(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<PersistentScope>> {
+  if let Some(parent) = scope_parent(scope) {
+    get_scope_root(parent)
   } else {
     scope
   }
 }
 
 #[inline]
-pub fn run_in_scope<T>(scope: Gc<Object<Scope>>, content: T) -> Gc<dyn Value>
+pub fn run_in_scope<T>(
+  scope: &Gc<Object<PersistentScope>>,
+  content: T,
+) -> (Gc<Object<PersistentScope>>, Gc<dyn Value>)
 where
   T: ToString,
 {

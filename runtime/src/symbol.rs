@@ -4,7 +4,9 @@ use core::ops::{Deref, DerefMut};
 
 use gc::{Gc, Trace};
 
-use super::{new_kind, new_object, Kind, Object, Scope};
+use super::{
+  new_kind, new_object, scope_get_with_kind, scope_set, Kind, Map, Object, PersistentScope,
+};
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(String);
@@ -58,27 +60,41 @@ impl Symbol {
   }
 
   #[inline]
-  pub(crate) fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let symbol_kind = new_kind::<Symbol>(scope.clone(), "Symbol");
-    scope.set("Symbol", symbol_kind.into_value());
+  pub(crate) fn init_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let symbol_kind = new_kind::<Symbol>(scope, "Symbol");
+    scope_set(scope, "Symbol", symbol_kind.into_value())
   }
 }
 
 #[inline]
-pub fn symbol_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("Symbol")
-      .expect("failed to get Symbol Kind")
-  }
+pub fn symbol_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Symbol").expect("failed to get Symbol Kind")
 }
 #[inline]
-pub fn new_symbol<T>(scope: Gc<Object<Scope>>, value: T) -> Gc<Object<Symbol>>
+pub fn new_symbol<T>(scope: &Gc<Object<PersistentScope>>, value: T) -> Gc<Object<Symbol>>
 where
   T: ToString,
 {
   new_object(
-    scope.clone(),
-    Object::new(symbol_kind(scope), Symbol::new(value.to_string())),
+    scope,
+    Object::new(symbol_kind(scope).clone(), Symbol::new(value.to_string())),
+  )
+}
+#[inline]
+pub fn new_symbol_with_meta<T>(
+  scope: &Gc<Object<PersistentScope>>,
+  value: T,
+  meta: Gc<Object<Map>>,
+) -> Gc<Object<Symbol>>
+where
+  T: ToString,
+{
+  new_object(
+    scope,
+    Object::new_with_meta(
+      symbol_kind(scope).clone(),
+      Symbol::new(value.to_string()),
+      meta,
+    ),
   )
 }

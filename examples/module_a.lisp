@@ -1,4 +1,4 @@
-(def hello_a (fn hello () 
+(def hello_a (fn hello []
   (println "Hello, from " __filename)
 ))
 

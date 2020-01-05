@@ -3,40 +3,41 @@ use std::path::Path;
 
 use gc::Gc;
 use runtime::{
-  add_external_function, new_context, new_string, nil_value, List, Object, Scope, Value,
+  add_external_function, new_context, new_string, nil_value, Object, PersistentScope,
+  PersistentVector, Value,
 };
 
 use super::{loader, new_module, DyLib};
 
 pub struct Lisp {
-  scope: Gc<Object<Scope>>,
+  scope: Gc<Object<PersistentScope>>,
 }
 
 impl Lisp {
   #[inline]
   pub fn new() -> Self {
-    let scope = new_context();
+    let mut scope = new_context();
 
-    DyLib::init_kind(scope.clone());
-    DyLib::init_scope(scope.clone());
+    scope = DyLib::init_kind(&scope);
+    scope = DyLib::init_scope(&scope);
 
-    add_external_function(scope.clone(), "println", vec!["...args"], println);
+    scope = add_external_function(&scope, "println", vec!["...args"], println);
 
     Lisp { scope }
   }
 
   #[inline]
   pub fn run(&self, filename_path: &Path) {
-    let mut module = new_module(self.scope.clone(), None);
+    let mut module = new_module(&self.scope, None);
     module.set(
-      new_string(self.scope.clone(), "dirname").into_value(),
-      new_string(self.scope.clone(), ".").into_value(),
+      new_string(&self.scope, "dirname").into_value(),
+      new_string(&self.scope, ".").into_value(),
     );
     loader::load(
-      self.scope.clone(),
+      &self.scope,
       module,
       new_string(
-        self.scope.clone(),
+        &self.scope,
         filename_path
           .to_str()
           .expect("failed to move Path to string"),
@@ -47,7 +48,10 @@ impl Lisp {
 }
 
 #[inline]
-fn println(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+fn println(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let mut string = String::new();
   let mut index = args.value().len();
 
@@ -61,5 +65,5 @@ fn println(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
   }
 
   println!("{}", string);
-  nil_value(scope).into_value()
+  nil_value(scope).clone().into_value()
 }

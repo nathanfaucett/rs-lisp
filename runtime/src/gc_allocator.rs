@@ -9,11 +9,14 @@ use gc::Gc;
 
 use gc::Trace;
 
-use super::{add_external_function, new_usize, Kind, List, Object, Scope, Value};
+use super::{
+  add_external_function, new_usize, scope_get_with_kind, Kind, Object, PersistentScope,
+  PersistentVector, Value,
+};
 
 #[derive(Clone, PartialEq, PartialOrd, Eq)]
 pub struct GcAllocator {
-  scope: Gc<Object<Scope>>,
+  scope: Gc<Object<PersistentScope>>,
   size: usize,
   max_size: usize,
   values: Vec<Gc<dyn Value>>,
@@ -51,9 +54,9 @@ impl Trace for GcAllocator {}
 
 impl GcAllocator {
   #[inline]
-  pub fn new(scope: Gc<Object<Scope>>) -> Self {
+  pub fn new(scope: Gc<Object<PersistentScope>>) -> Self {
     GcAllocator {
-      scope: scope,
+      scope: scope.clone(),
       size: 0,
       max_size: 1024 * 1024,
       values: Vec::new(),
@@ -61,17 +64,15 @@ impl GcAllocator {
   }
 
   #[inline]
-  pub(crate) unsafe fn unsafe_new() -> Self {
-    GcAllocator {
-      scope: Gc::null(),
-      size: 0,
-      max_size: 1024 * 1024,
-      values: Vec::new(),
-    }
+  pub unsafe fn unsafe_new() -> Self {
+    Self::new(Gc::null())
   }
 
   #[inline]
-  pub(crate) unsafe fn unsafe_set_scope(&mut self, scope: Gc<Object<Scope>>) -> &mut Self {
+  pub(crate) unsafe fn unsafe_set_scope(
+    &mut self,
+    scope: Gc<Object<PersistentScope>>,
+  ) -> &mut Self {
     self.scope = scope;
     self
   }
@@ -89,11 +90,12 @@ impl GcAllocator {
   }
 
   #[inline]
-  pub unsafe fn maintain<T>(&mut self, object: Gc<Object<T>>) -> &mut Self
+  pub unsafe fn maintain<T>(&mut self, object: Gc<Object<T>>) -> Gc<Object<T>>
   where
     T: PartialEq + PartialOrd + Hash + Debug + Trace + 'static,
   {
-    self.maintain_value(object.into_value())
+    self.maintain_value(object.clone().into_value());
+    object
   }
 
   #[inline(always)]
@@ -148,32 +150,32 @@ impl GcAllocator {
   }
 
   #[inline]
-  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
+  pub(crate) fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
     add_external_function(
       scope,
       "gc_allocator.collect",
       vec!["gc_allocator"],
       gc_allocator_collect,
-    );
+    )
   }
 }
 
 #[inline]
-pub fn gc_allocator_collect(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let gc_allocator = args
-    .front_mut()
+pub fn gc_allocator_collect(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let mut gc_allocator = args
+    .front()
     .expect("GcAllocator is nil")
-    .downcast_mut::<Object<GcAllocator>>()
-    .expect("Failed to downcast to GcAllocator");
+    .downcast_ref::<Object<GcAllocator>>()
+    .expect("Failed to downcast to GcAllocator")
+    .clone();
 
   new_usize(scope, gc_allocator.collect()).into_value()
 }
 
 #[inline]
-pub fn gc_allocator_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("GcAllocator")
-      .expect("failed to get GcAllocator Kind")
-  }
+pub fn gc_allocator_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "GcAllocator").expect("failed to get GcAllocator Kind")
 }

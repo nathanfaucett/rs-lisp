@@ -1,64 +1,60 @@
-use super::{add_external_function, new_kind, new_object, Kind, List, Object, Scope, Value};
+use super::{
+  add_external_function, new_kind, new_object, scope_get_with_kind, scope_set, Kind, Object,
+  PersistentScope, PersistentVector, Value,
+};
 use gc::Gc;
 
 #[inline]
-pub fn init_bool_kind(mut scope: Gc<Object<Scope>>) {
-  let boolean_kind = new_kind::<bool>(scope.clone(), "Bool");
-  let true_value = new_object(scope.clone(), Object::new(boolean_kind.clone(), true));
-  let false_value = new_object(scope.clone(), Object::new(boolean_kind.clone(), false));
+pub fn init_bool_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+  let boolean_kind = new_kind::<bool>(scope, "Bool");
+  let true_value = new_object(scope, Object::new(boolean_kind.clone(), true));
+  let false_value = new_object(scope, Object::new(boolean_kind.clone(), false));
 
-  scope.set("Bool", boolean_kind.into_value());
-  scope.set("true", true_value.into_value());
-  scope.set("false", false_value.into_value());
+  let mut new_scope = scope_set(scope, "Bool", boolean_kind.into_value());
+  new_scope = scope_set(&new_scope, "true", true_value.into_value());
+  scope_set(&new_scope, "false", false_value.into_value())
 }
 
 #[inline]
-pub fn init_bool_scope(scope: Gc<Object<Scope>>) {
-  add_external_function(scope, "bool.not", vec!["value"], bool_not);
+pub fn init_bool_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+  add_external_function(scope, "bool.not", vec!["value"], bool_not)
 }
 
 #[inline]
-pub fn bool_not(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn bool_not(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let value = args
-    .pop_front()
-    .unwrap_or_else(|| false_value(scope.clone()).into_value())
-    .downcast::<Object<bool>>()
+    .front()
+    .map(Clone::clone)
+    .unwrap_or_else(|| false_value(&scope).clone().into_value());
+  let boolean = value
+    .downcast_ref::<Object<bool>>()
     .expect("Failed to downcast value to bool");
 
-  new_bool(scope, !*value.value()).into_value()
+  new_bool(&scope, !*boolean.value()).clone().into_value()
 }
 
 #[inline]
-pub fn bool_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("Bool")
-      .expect("failed to get Bool Kind")
-  }
+pub fn bool_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Bool").expect("failed to get Bool Kind")
 }
 
 #[inline]
-pub fn true_value(scope: Gc<Object<Scope>>) -> Gc<Object<bool>> {
-  unsafe {
-    scope
-      .get_with_kind::<bool>("true")
-      .expect("failed to get true value")
-  }
+pub fn true_value(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<bool>> {
+  scope_get_with_kind::<bool>(scope, "true").expect("failed to get true value")
 }
 #[inline]
-pub fn false_value(scope: Gc<Object<Scope>>) -> Gc<Object<bool>> {
-  unsafe {
-    scope
-      .get_with_kind::<bool>("false")
-      .expect("failed to get false value")
-  }
+pub fn false_value(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<bool>> {
+  scope_get_with_kind::<bool>(scope, "false").expect("failed to get false value")
 }
 
 #[inline]
-pub fn new_bool(scope: Gc<Object<Scope>>, value: bool) -> Gc<Object<bool>> {
+pub fn new_bool(scope: &Gc<Object<PersistentScope>>, value: bool) -> Gc<Object<bool>> {
   if value {
-    true_value(scope)
+    true_value(scope).clone()
   } else {
-    false_value(scope)
+    false_value(scope).clone()
   }
 }

@@ -9,8 +9,8 @@ use hashbrown::hash_map::{IntoIter, Iter, IterMut};
 use hashbrown::HashMap;
 
 use super::{
-  add_external_function, new_bool, new_kind, new_object, new_usize, nil_value, Kind, List, Object,
-  Scope, Value,
+  add_external_function, new_bool, new_kind, new_object, new_usize, nil_value, scope_get_with_kind,
+  scope_set, Kind, Object, PersistentScope, PersistentVector, Value,
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -132,24 +132,27 @@ impl Map {
   }
 
   #[inline]
-  pub(crate) fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let map_kind = new_kind::<Map>(scope.clone(), "Map");
-    scope.set("Map", map_kind.into_value());
+  pub(crate) fn init_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let map_kind = new_kind::<Map>(scope, "Map");
+    scope_set(scope, "Map", map_kind.into_value())
   }
 
   #[inline]
-  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
-    add_external_function(scope.clone(), "map.is_empty", vec!["map"], map_is_empty);
-    add_external_function(scope.clone(), "map.len", vec!["map"], map_len);
-    add_external_function(scope.clone(), "map.get", vec!["map", "key"], map_get);
-    add_external_function(scope.clone(), "map.remove", vec!["map", "key"], map_remove);
-    add_external_function(scope.clone(), "map.has", vec!["map", "key"], map_has);
-    add_external_function(scope, "map.set", vec!["map", "key", "value"], map_set);
+  pub(crate) fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let mut new_scope = add_external_function(scope, "map.is_empty", vec!["map"], map_is_empty);
+    new_scope = add_external_function(&new_scope, "map.len", vec!["map"], map_len);
+    new_scope = add_external_function(&new_scope, "map.get", vec!["map", "key"], map_get);
+    new_scope = add_external_function(&new_scope, "map.remove", vec!["map", "key"], map_remove);
+    new_scope = add_external_function(&new_scope, "map.has", vec!["map", "key"], map_has);
+    add_external_function(&new_scope, "map.set", vec!["map", "key", "value"], map_set)
   }
 }
 
 #[inline]
-pub fn map_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn map_is_empty(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let map = args
     .front()
     .expect("Map is nil")
@@ -160,7 +163,10 @@ pub fn map_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn 
 }
 
 #[inline]
-pub fn map_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn map_len(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let map = args
     .front()
     .expect("Map is nil")
@@ -171,80 +177,81 @@ pub fn map_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value
 }
 
 #[inline]
-pub fn map_has(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let map = mut_args
-    .pop_front()
-    .expect("Map is nil")
-    .downcast::<Object<Map>>()
+pub fn map_has(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let map_value = args.front().expect("Map is nil").clone();
+  let map = map_value
+    .downcast_ref::<Object<Map>>()
     .expect("Failed to downcast to Map");
-  let key = mut_args.pop_front().expect("key is nil");
+  let key = args.get(1).expect("key is nil");
 
-  new_bool(scope, map.has(&key)).into_value()
+  new_bool(scope, map.has(key)).into_value()
 }
 
 #[inline]
-pub fn map_get(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let map = mut_args
-    .pop_front()
-    .expect("Map is nil")
-    .downcast::<Object<Map>>()
+pub fn map_get(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let map_value = args.front().expect("Map is nil").clone();
+  let map = map_value
+    .downcast_ref::<Object<Map>>()
     .expect("Failed to downcast to Map");
-  let key = mut_args.pop_front().expect("key is nil");
+  let key = args.get(1).expect("key is nil");
 
   map
-    .get(&key)
+    .get(key)
     .map(Clone::clone)
-    .unwrap_or_else(|| nil_value(scope).into_value())
+    .unwrap_or_else(|| nil_value(scope).clone().into_value())
 }
 
 #[inline]
-pub fn map_remove(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let mut map = mut_args
-    .pop_front()
-    .expect("Map is nil")
-    .downcast::<Object<Map>>()
+pub fn map_remove(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let mut map_value = args.front().expect("Map is nil").clone();
+  let map = map_value
+    .downcast_mut::<Object<Map>>()
     .expect("Failed to downcast to Map");
-  let key = mut_args.pop_front().expect("key is nil");
+  let key = args.get(1).expect("key is nil");
 
   map
     .remove(&key)
-    .unwrap_or_else(|| nil_value(scope).into_value())
+    .unwrap_or_else(|| nil_value(scope).clone().into_value())
 }
 
 #[inline]
-pub fn map_set(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let mut map = mut_args
-    .pop_front()
-    .expect("Map is nil")
-    .downcast::<Object<Map>>()
+pub fn map_set(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let mut map_value = args.front().expect("Map is nil").clone();
+  let map = map_value
+    .downcast_mut::<Object<Map>>()
     .expect("Failed to downcast to Map");
-  let key = mut_args.pop_front().expect("key is nil");
-  let value = mut_args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope).into_value());
+  let key = args.get(1).expect("key is nil").clone();
+  let value = args
+    .get(2)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   map.set(key, value);
-  map.into_value()
+  map_value
 }
 
 #[inline]
-pub fn map_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("Map")
-      .expect("failed to get Map Kind")
-  }
+pub fn map_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Map").expect("failed to get Map Kind")
 }
 #[inline]
-pub fn new_map(scope: Gc<Object<Scope>>) -> Gc<Object<Map>> {
-  new_object(scope.clone(), Object::new(map_kind(scope), Map::new()))
+pub fn new_map(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<Map>> {
+  new_map_from(scope, Map::new())
 }
 
 #[inline]
-pub fn new_map_from(scope: Gc<Object<Scope>>, map: Map) -> Gc<Object<Map>> {
-  new_object(scope.clone(), Object::new(map_kind(scope), map))
+pub fn new_map_from(scope: &Gc<Object<PersistentScope>>, map: Map) -> Gc<Object<Map>> {
+  new_object(scope, Object::new(map_kind(scope).clone(), map))
 }

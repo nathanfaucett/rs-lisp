@@ -2,55 +2,56 @@ use alloc::string::{String, ToString};
 
 use super::{
   add_external_function, init_bool_kind, init_bool_scope, init_numbers_kind, init_numbers_scope,
-  new_kind, new_object, Escape, Function, GcAllocator, Keyword, Kind, LinkedMap, List, Map, Object,
-  PersistentList, PersistentMap, PersistentSet, PersistentVector, Scope, Set, SpecialForm, Symbol,
-  Value, Vector,
+  new_kind, new_object, scope_get_with_kind, scope_set, Escape, Function, GcAllocator, Keyword,
+  Kind, LinkedMap, List, Map, Object, PersistentList, PersistentMap, PersistentScope,
+  PersistentSet, PersistentVector, Set, SpecialForm, Symbol, Value, Vector,
 };
 use gc::Gc;
 
 #[inline]
-pub fn new_context() -> Gc<Object<Scope>> {
+pub fn new_context() -> Gc<Object<PersistentScope>> {
   unsafe {
-    let scope = init_root_scope();
+    let mut scope = init_root_scope();
 
-    init_nil(scope.clone());
-    init_bool_kind(scope.clone());
-    init_char(scope.clone());
-    init_string(scope.clone());
-    init_numbers_kind(scope.clone());
-    Function::init_kind(scope.clone());
-    SpecialForm::init_kind(scope.clone());
-    Symbol::init_kind(scope.clone());
-    Keyword::init_kind(scope.clone());
-    Escape::init_kind(scope.clone());
-    List::init_kind(scope.clone());
-    LinkedMap::init_kind(scope.clone());
-    Vector::init_kind(scope.clone());
-    Map::init_kind(scope.clone());
-    Set::init_kind(scope.clone());
-    PersistentList::init_kind(scope.clone());
-    PersistentMap::init_kind(scope.clone());
-    PersistentSet::init_kind(scope.clone());
-    PersistentVector::init_kind(scope.clone());
+    scope = init_nil(&scope);
+    scope = init_bool_kind(&scope);
+    scope = init_char(&scope);
+    scope = init_string(&scope);
+    scope = init_numbers_kind(&scope);
+    scope = Symbol::init_kind(&scope);
+    scope = Keyword::init_kind(&scope);
+    scope = Function::init_kind(&scope);
+    scope = SpecialForm::init_kind(&scope);
+    scope = Escape::init_kind(&scope);
+    scope = List::init_kind(&scope);
+    scope = LinkedMap::init_kind(&scope);
+    scope = Vector::init_kind(&scope);
+    scope = Map::init_kind(&scope);
+    scope = Set::init_kind(&scope);
+    scope = PersistentList::init_kind(&scope);
+    scope = PersistentMap::init_kind(&scope);
+    scope = PersistentSet::init_kind(&scope);
+    scope = PersistentVector::init_kind(&scope);
 
-    init_numbers_scope(scope.clone());
-    init_bool_scope(scope.clone());
-    Value::init_scope(scope.clone());
-    Kind::init_scope(scope.clone());
-    GcAllocator::init_scope(scope.clone());
-    Scope::init_scope(scope.clone());
-    List::init_scope(scope.clone());
-    LinkedMap::init_scope(scope.clone());
-    Vector::init_scope(scope.clone());
-    Map::init_scope(scope.clone());
-    Set::init_scope(scope.clone());
-    PersistentList::init_scope(scope.clone());
-    PersistentMap::init_scope(scope.clone());
-    PersistentSet::init_scope(scope.clone());
-    PersistentVector::init_scope(scope.clone());
+    scope = init_numbers_scope(&scope);
+    scope = init_bool_scope(&scope);
+    scope = Value::init_scope(&scope);
+    scope = Kind::init_scope(&scope);
+    scope = GcAllocator::init_scope(&scope);
+    scope = PersistentScope::init_scope(&scope);
+    scope = SpecialForm::init_scope(&scope);
+    scope = List::init_scope(&scope);
+    scope = LinkedMap::init_scope(&scope);
+    scope = Vector::init_scope(&scope);
+    scope = Map::init_scope(&scope);
+    scope = Set::init_scope(&scope);
+    scope = PersistentList::init_scope(&scope);
+    scope = PersistentMap::init_scope(&scope);
+    scope = PersistentSet::init_scope(&scope);
+    scope = PersistentVector::init_scope(&scope);
 
-    add_external_function(
-      scope.clone(),
+    scope = add_external_function(
+      &scope,
       "global_error_handler",
       vec!["error"],
       global_error_handler,
@@ -61,113 +62,108 @@ pub fn new_context() -> Gc<Object<Scope>> {
 }
 
 #[inline]
-fn global_error_handler(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+fn global_error_handler(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let error = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .front()
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   panic!("{:?}", error)
 }
 
 #[inline]
-unsafe fn init_root_scope() -> Gc<Object<Scope>> {
-  let mut scope: Gc<Object<Scope>> = Gc::null();
-
+unsafe fn init_root_scope() -> Gc<Object<PersistentScope>> {
+  let mut scope: Gc<Object<PersistentScope>> = Gc::null();
   let mut gc_allocator = GcAllocator::unsafe_new();
+  let mut persistent_scope = PersistentScope::default();
 
-  let kind_kind = Kind::new_kind_kind();
+  let kind_kind = gc_allocator.maintain(Kind::new_kind_kind());
 
-  gc_allocator.maintain(kind_kind.clone());
+  persistent_scope = persistent_scope.set("Kind", kind_kind.clone().into_value());
 
-  let scope_kind = gc_allocator.alloc(Kind::new_kind_object::<Scope>(kind_kind.clone(), "Scope"));
-  scope.set_from_value(Object::new(scope_kind.clone(), Scope::new(None)));
+  let persistent_scope_kind = gc_allocator.alloc(Kind::new_kind_object::<PersistentScope>(
+    kind_kind.clone(),
+    "PersistentScope",
+  ));
 
-  gc_allocator.unsafe_set_scope(scope.clone());
-
-  scope.set("Kind", kind_kind.clone().into_value());
-  scope.set("Scope", scope_kind.clone().into_value());
+  persistent_scope = persistent_scope.set(
+    "PersistentScope",
+    persistent_scope_kind.clone().into_value(),
+  );
 
   let gc_allocator_kind = gc_allocator.alloc(Kind::new_kind_object::<GcAllocator>(
     kind_kind,
     "GcAllocator",
   ));
+
+  persistent_scope = persistent_scope.set("GcAllocator", gc_allocator_kind.clone().into_value());
+
   let mut gc_allocator_object = Gc::new(Object::new(gc_allocator_kind.clone(), gc_allocator));
-  let gc_allocator_value = gc_allocator_object.clone().into_value();
 
-  gc_allocator_object.maintain_value(gc_allocator_value.clone());
+  persistent_scope = persistent_scope.set(
+    "default_gc_allocator",
+    gc_allocator_object.clone().into_value(),
+  );
 
-  scope.set("GcAllocator", gc_allocator_kind.into_value());
-  scope.set("default_gc_allocator", gc_allocator_value);
+  scope.set_from_value(Object::new(persistent_scope_kind.clone(), persistent_scope));
+  gc_allocator_object.unsafe_set_scope(scope.clone());
 
   scope
 }
 
 #[inline]
-fn init_nil(mut scope: Gc<Object<Scope>>) {
-  let nil_kind = new_kind::<()>(scope.clone(), "Nil");
-  let nil_value = new_object(scope.clone(), Object::new(nil_kind.clone(), ()));
+fn init_nil(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+  let nil_kind = new_kind::<()>(&scope, "Nil");
+  let nil_value = new_object(&scope, Object::new(nil_kind.clone(), ()));
 
-  scope.set("Nil", nil_kind.into_value());
-  scope.set("nil", nil_value.into_value());
-}
-
-#[inline]
-fn init_char(mut scope: Gc<Object<Scope>>) {
-  let character_kind = new_kind::<char>(scope.clone(), "Char");
-  scope.set("Char", character_kind.into_value());
+  let scope = scope_set(&scope, "Nil", nil_kind.into_value());
+  scope_set(&scope, "nil", nil_value.into_value())
 }
 
 #[inline]
-fn init_string(mut scope: Gc<Object<Scope>>) {
-  let string_kind = new_kind::<String>(scope.clone(), "String");
-  scope.set("String", string_kind.into_value());
+fn init_char(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+  let character_kind = new_kind::<char>(&scope, "Char");
+  scope_set(&scope, "Char", character_kind.into_value())
 }
 
 #[inline]
-pub fn nil_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("Nil")
-      .expect("failed to get Nil Kind")
-  }
-}
-#[inline]
-pub fn nil_value(scope: Gc<Object<Scope>>) -> Gc<Object<()>> {
-  unsafe {
-    scope
-      .get_with_kind::<()>("nil")
-      .expect("failed to get nil value")
-  }
+fn init_string(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+  let string_kind = new_kind::<String>(&scope, "String");
+  scope_set(&scope, "String", string_kind.into_value())
 }
 
 #[inline]
-pub fn char_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("Char")
-      .expect("failed to get Char Kind")
-  }
+pub fn nil_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Nil").expect("failed to get Nil Kind")
 }
 #[inline]
-pub fn new_char(scope: Gc<Object<Scope>>, value: char) -> Gc<Object<char>> {
-  new_object(scope.clone(), Object::new(char_kind(scope), value))
+pub fn nil_value(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<()>> {
+  scope_get_with_kind::<()>(scope, "nil").expect("failed to get nil value")
 }
 
 #[inline]
-pub fn string_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("String")
-      .expect("failed to get String Kind")
-  }
+pub fn char_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Char").expect("failed to get Char Kind")
 }
 #[inline]
-pub fn new_string<T>(scope: Gc<Object<Scope>>, value: T) -> Gc<Object<String>>
+pub fn new_char(scope: &Gc<Object<PersistentScope>>, value: char) -> Gc<Object<char>> {
+  new_object(scope, Object::new(char_kind(scope).clone(), value))
+}
+
+#[inline]
+pub fn string_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "String").expect("failed to get String Kind")
+}
+#[inline]
+pub fn new_string<T>(scope: &Gc<Object<PersistentScope>>, value: T) -> Gc<Object<String>>
 where
   T: ToString,
 {
   new_object(
-    scope.clone(),
-    Object::new(string_kind(scope), value.to_string()),
+    scope,
+    Object::new(string_kind(scope).clone(), value.to_string()),
   )
 }

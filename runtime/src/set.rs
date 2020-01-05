@@ -9,8 +9,8 @@ use hashbrown::hash_set::{IntoIter, Iter};
 use hashbrown::HashSet;
 
 use super::{
-  add_external_function, new_bool, new_kind, new_object, new_usize, nil_value, Kind, List, Object,
-  Scope, Value,
+  add_external_function, new_bool, new_kind, new_object, new_usize, nil_value, scope_get_with_kind,
+  scope_set, Kind, Object, PersistentScope, PersistentVector, Value,
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -114,9 +114,9 @@ impl Set {
   }
 
   #[inline]
-  pub(crate) fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let set_kind = new_kind::<Set>(scope.clone(), "Set");
-    scope.set("Set", set_kind.into_value());
+  pub(crate) fn init_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let set_kind = new_kind::<Set>(scope, "Set");
+    scope_set(scope, "Set", set_kind.into_value())
   }
 
   #[inline]
@@ -129,18 +129,21 @@ impl Set {
   }
 
   #[inline]
-  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
-    add_external_function(scope.clone(), "set.is_empty", vec!["set"], set_is_empty);
-    add_external_function(scope.clone(), "set.len", vec!["set"], set_len);
-    add_external_function(scope.clone(), "set.get", vec!["set", "key"], set_get);
-    add_external_function(scope.clone(), "set.remove", vec!["set", "key"], set_remove);
-    add_external_function(scope.clone(), "set.has", vec!["set", "key"], set_has);
-    add_external_function(scope, "set.add", vec!["set", "value"], set_add);
+  pub(crate) fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let mut new_scope = add_external_function(scope, "set.is_empty", vec!["set"], set_is_empty);
+    new_scope = add_external_function(&new_scope, "set.len", vec!["set"], set_len);
+    new_scope = add_external_function(&new_scope, "set.get", vec!["set", "key"], set_get);
+    new_scope = add_external_function(&new_scope, "set.remove", vec!["set", "key"], set_remove);
+    new_scope = add_external_function(&new_scope, "set.has", vec!["set", "key"], set_has);
+    add_external_function(&new_scope, "set.add", vec!["set", "value"], set_add)
   }
 }
 
 #[inline]
-pub fn set_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn set_is_empty(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let set = args
     .front()
     .expect("Set is nil")
@@ -151,7 +154,10 @@ pub fn set_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn 
 }
 
 #[inline]
-pub fn set_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn set_len(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let set = args
     .front()
     .expect("Set is nil")
@@ -162,85 +168,89 @@ pub fn set_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value
 }
 
 #[inline]
-pub fn set_has(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let set = mut_args
-    .pop_front()
-    .expect("Set is nil")
-    .downcast::<Object<Set>>()
+pub fn set_has(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let set_value = args.front().expect("Set is nil");
+  let set = set_value
+    .downcast_ref::<Object<Set>>()
     .expect("Failed to downcast to Set");
-  let value = mut_args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+  let value = args
+    .get(1)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   new_bool(scope, set.has(&value)).into_value()
 }
 
 #[inline]
-pub fn set_get(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let set = mut_args
-    .pop_front()
-    .expect("Set is nil")
-    .downcast::<Object<Set>>()
+pub fn set_get(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let set_value = args.front().expect("Set is nil");
+  let set = set_value
+    .downcast_ref::<Object<Set>>()
     .expect("Failed to downcast to Set");
-  let value = mut_args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+  let value = args
+    .get(1)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   set
     .get(&value)
     .map(Clone::clone)
-    .unwrap_or_else(|| nil_value(scope).into_value())
+    .unwrap_or_else(|| nil_value(scope).clone().into_value())
 }
 
 #[inline]
-pub fn set_remove(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let mut set = mut_args
-    .pop_front()
-    .expect("Set is nil")
-    .downcast::<Object<Set>>()
+pub fn set_remove(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let mut set_value = args.front().expect("Set is nil").clone();
+  let set = set_value
+    .downcast_mut::<Object<Set>>()
     .expect("Failed to downcast to Set");
-  let value = mut_args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+  let value = args
+    .get(1)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   set
     .remove(&value)
-    .unwrap_or_else(|| nil_value(scope).into_value())
+    .unwrap_or_else(|| nil_value(scope).clone().into_value())
 }
 
 #[inline]
-pub fn set_add(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let mut set = mut_args
-    .pop_front()
-    .expect("Set is nil")
-    .downcast::<Object<Set>>()
+pub fn set_add(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let mut set_value = args.front().expect("Set is nil").clone();
+  let set = set_value
+    .downcast_mut::<Object<Set>>()
     .expect("Failed to downcast to Set");
-  let value = mut_args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope).into_value());
+  let value = args
+    .get(1)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   set.add(value);
-  set.into_value()
+  set_value
 }
 
 #[inline]
-pub fn set_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("Set")
-      .expect("failed to get Set Kind")
-  }
+pub fn set_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Set").expect("failed to get Set Kind")
 }
 #[inline]
-pub fn new_set(scope: Gc<Object<Scope>>) -> Gc<Object<Set>> {
-  new_object(scope.clone(), Object::new(set_kind(scope), Set::new()))
+pub fn new_set(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<Set>> {
+  new_set_from(scope, Set::new())
 }
 
 #[inline]
-pub fn new_set_from(scope: Gc<Object<Scope>>, set: Set) -> Gc<Object<Set>> {
-  new_object(scope.clone(), Object::new(set_kind(scope), set))
+pub fn new_set_from(scope: &Gc<Object<PersistentScope>>, set: Set) -> Gc<Object<Set>> {
+  new_object(scope, Object::new(set_kind(scope).clone(), set))
 }

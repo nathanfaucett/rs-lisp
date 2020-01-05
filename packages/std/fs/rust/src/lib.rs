@@ -1,9 +1,7 @@
 extern crate lisp;
 
 use lisp::gc::Gc;
-use lisp::runtime::{self, List, Object, Scope, Value};
+use lisp::runtime::{self, List, Object, PersistentScope, Value};
 
 #[no_mangle]
-pub fn load(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  
-}
+pub fn load(scope: &Gc<Object<PersistentScope>>, args: &Gc<Object<PersistentVector>>) -> Gc<dyn Value> {}

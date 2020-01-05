@@ -5,7 +5,7 @@ use core::{fmt, ptr};
 
 use gc::{Gc, Trace};
 
-use super::{Function, Object, Scope, Value};
+use super::{Function, Object, PersistentScope, Value};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EvalState {
@@ -15,7 +15,6 @@ pub enum EvalState {
   EvalMapKeyValue,
   Call,
   CallFunction,
-  CallFunctionEvalArgs,
   PopValue,
   PopScope,
   Throw,
@@ -35,7 +34,7 @@ pub enum PopResult {
 #[derive(Clone, Eq)]
 pub struct Stack {
   pub(crate) value: LinkedList<Gc<dyn Value>>,
-  pub(crate) scope: LinkedList<Gc<Object<Scope>>>,
+  pub(crate) scope: LinkedList<Gc<Object<PersistentScope>>>,
   pub(crate) callable: LinkedList<Gc<Object<Function>>>,
   pub(crate) state: LinkedList<EvalState>,
 }
@@ -105,9 +104,19 @@ impl Stack {
   }
 
   #[inline]
+  pub(crate) fn pop_scope_and_value(
+    &mut self,
+  ) -> Option<(Gc<Object<PersistentScope>>, Gc<dyn Value>)> {
+    self
+      .scope
+      .pop_front()
+      .and_then(|scope| self.value.pop_front().map(|value| (scope, value)))
+  }
+
+  #[inline]
   pub(crate) fn push_scope_and_value(
     &mut self,
-    scope: Gc<Object<Scope>>,
+    scope: Gc<Object<PersistentScope>>,
     value: Gc<dyn Value>,
   ) -> &mut Self {
     self.value.push_front(value);

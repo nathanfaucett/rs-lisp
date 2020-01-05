@@ -8,8 +8,10 @@ use core::{fmt, ptr};
 use gc::{Gc, Trace};
 
 use super::{
-  escape_kind, new_function, new_kind, new_list, new_macro, new_object, nil_value, read_value,
-  Escape, EvalState, Kind, List, Object, Reader, Scope, Stack, Symbol, Value,
+  escape_kind, new_function, new_kind, new_macro, new_object, new_persistent_list,
+  new_persistent_list_from, nil_value, read_value, scope_get_with_kind, scope_set, Escape,
+  EvalState, Kind, Object, PersistentList, PersistentScope, PersistentVector, Reader, Stack,
+  Symbol, Value,
 };
 
 pub struct SpecialForm(Box<dyn Fn(&mut Stack)>);
@@ -75,43 +77,45 @@ impl SpecialForm {
   }
 
   #[inline]
-  pub(crate) fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let special_form_kind = new_kind::<SpecialForm>(scope.clone(), "SpecialForm");
+  pub(crate) fn init_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let special_form_kind = new_kind::<SpecialForm>(scope, "SpecialForm");
+    scope_set(scope, "SpecialForm", special_form_kind.into_value())
+  }
 
-    scope.set("SpecialForm", special_form_kind.into_value());
+  #[inline]
+  pub(crate) fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let if_function = new_special_form(&scope, if_special_form).into_value();
+    let mut new_scope = scope_set(&scope, "if", if_function);
 
-    let if_function = new_special_form(scope.clone(), if_special_form).into_value();
-    scope.set("if", if_function);
+    let fn_function = new_special_form(&new_scope, fn_special_form).into_value();
+    new_scope = scope_set(&new_scope, "fn", fn_function);
 
-    let fn_function = new_special_form(scope.clone(), fn_special_form).into_value();
-    scope.set("fn", fn_function);
+    let macro_function = new_special_form(&new_scope, macro_special_form).into_value();
+    new_scope = scope_set(&new_scope, "macro", macro_function);
 
-    let macro_function = new_special_form(scope.clone(), macro_special_form).into_value();
-    scope.set("macro", macro_function);
+    let def_function = new_special_form(&new_scope, def_special_form).into_value();
+    new_scope = scope_set(&new_scope, "def", def_function);
 
-    let def_function = new_special_form(scope.clone(), def_special_form).into_value();
-    scope.set("def", def_function);
+    let do_function = new_special_form(&new_scope, do_special_form).into_value();
+    new_scope = scope_set(&new_scope, "do", do_function);
 
-    let do_function = new_special_form(scope.clone(), do_special_form).into_value();
-    scope.set("do", do_function);
+    let quote_function = new_special_form(&new_scope, quote_special_form).into_value();
+    new_scope = scope_set(&new_scope, "quote", quote_function);
 
-    let quote_function = new_special_form(scope.clone(), quote_special_form).into_value();
-    scope.set("quote", quote_function);
+    let eval_function = new_special_form(&new_scope, eval_special_form).into_value();
+    new_scope = scope_set(&new_scope, "eval", eval_function);
 
-    let eval_function = new_special_form(scope.clone(), eval_special_form).into_value();
-    scope.set("eval", eval_function);
+    let read_function = new_special_form(&new_scope, read_special_form).into_value();
+    new_scope = scope_set(&new_scope, "read", read_function);
 
-    let read_function = new_special_form(scope.clone(), read_special_form).into_value();
-    scope.set("read", read_function);
+    let expand_function = new_special_form(&new_scope, expand_special_form).into_value();
+    new_scope = scope_set(&new_scope, "expand", expand_function);
 
-    let expand_function = new_special_form(scope.clone(), expand_special_form).into_value();
-    scope.set("expand", expand_function);
+    let throw_function = new_special_form(&new_scope, throw_special_form).into_value();
+    new_scope = scope_set(&new_scope, "throw", throw_function);
 
-    let throw_function = new_special_form(scope.clone(), throw_special_form).into_value();
-    scope.set("throw", throw_function);
-
-    let try_function = new_special_form(scope.clone(), try_special_form).into_value();
-    scope.set("try", try_function);
+    let try_function = new_special_form(&new_scope, try_special_form).into_value();
+    scope_set(&new_scope, "try", try_function)
   }
 }
 
@@ -140,50 +144,52 @@ impl<'a> FnMut<&'a mut Stack> for SpecialForm {
 
 #[inline]
 pub fn if_special_form(stack: &mut Stack) {
-  let mut args = stack
+  let mut args_value = stack
     .value
     .pop_front()
-    .expect("failed to get arguments for if")
-    .downcast::<Object<List>>()
-    .expect("failed downcast arguments to List for if");
+    .expect("failed to get arguments for if");
+  let args = args_value
+    .downcast_mut::<Object<PersistentVector>>()
+    .expect("failed downcast arguments to PersistentVector for if");
 
-  let expr = args.pop_front().expect("failed to get expr");
-  let if_expr = args.pop_front().expect("failed to get if expr");
+  let expr = args.get(0).expect("failed to get expr");
+  let if_expr = args.get(1).expect("failed to get if expr");
 
   stack.state.push_front(EvalState::If);
 
-  if let Some(value) = args.pop_front() {
-    stack.value.push_front(value);
+  if let Some(value) = args.get(2) {
+    stack.value.push_front(value.clone());
   } else {
     stack
       .value
-      .push_front(nil_value(stack.scope.front().unwrap().clone()).into_value());
+      .push_front(nil_value(stack.scope.front().unwrap()).clone().into_value());
   }
-  stack.value.push_front(if_expr);
+  stack.value.push_front(if_expr.clone());
 
-  stack.value.push_front(expr);
+  stack.value.push_front(expr.clone());
   stack.state.push_front(EvalState::Eval);
 }
 
 #[inline]
 pub fn def_special_form(stack: &mut Stack) {
-  let mut args = stack
+  let mut args_value = stack
     .value
     .pop_front()
-    .expect("failed to get arguments for def")
-    .downcast::<Object<List>>()
-    .expect("failed downcast arguments to List for def");
+    .expect("failed to get arguments for def");
+  let args = args_value
+    .downcast_mut::<Object<PersistentVector>>()
+    .expect("failed downcast arguments to PersistentVector for def");
 
-  let key = args.pop_front().expect("failed to get key for def");
-  let value = args.pop_front().expect("failed to get value for def");
+  let key = args.get(0).expect("failed to get key for def");
+  let value = args.get(1).expect("failed to get value for def");
 
   // returns nil
   stack
     .value
-    .push_front(nil_value(stack.scope.front().unwrap().clone()).into_value());
+    .push_front(nil_value(stack.scope.front().unwrap()).clone().into_value());
 
-  stack.value.push_front(key);
-  stack.value.push_front(value);
+  stack.value.push_front(key.clone());
+  stack.value.push_front(value.clone());
 
   stack.state.push_front(EvalState::Def);
   stack.state.push_front(EvalState::Eval);
@@ -192,35 +198,44 @@ pub fn def_special_form(stack: &mut Stack) {
 #[inline]
 fn build_function(
   stack: &mut Stack,
-) -> (Option<Gc<Object<Symbol>>>, Gc<Object<List>>, Gc<dyn Value>) {
-  let mut args = stack
+) -> (
+  Option<Gc<Object<Symbol>>>,
+  Gc<Object<PersistentVector>>,
+  Gc<dyn Value>,
+) {
+  let mut args_value = stack
     .value
     .pop_front()
-    .expect("failed to get arguments for function")
-    .downcast::<Object<List>>()
-    .expect("failed downcast arguments to List for function");
+    .expect("failed to get arguments for function");
+  let args = args_value
+    .downcast_mut::<Object<PersistentVector>>()
+    .expect("failed downcast arguments to PersistentVector for function");
 
   let (name, params) = {
     let first = args
-      .pop_front()
+      .get(0)
       .expect("failed to get function name/params for fn");
 
-    match first.downcast::<Object<Symbol>>() {
-      Ok(name) => {
+    match first.downcast_ref::<Object<Symbol>>() {
+      Some(name) => {
         let params = args
-          .pop_front()
+          .get(1)
           .expect("failed to get function params")
-          .downcast::<Object<List>>()
-          .expect("failed to downcast function params as List");
-        (Some(name), params)
+          .downcast_ref::<Object<PersistentVector>>()
+          .expect("failed to downcast function params as PersistentVector")
+          .clone();
+        (Some(name.clone()), params)
       }
-      Err(first) => match first.downcast::<Object<List>>() {
-        Ok(params) => (None, params),
-        Err(_) => panic!("invalid function params provided to fn {:?}", args),
+      None => match first.downcast_ref::<Object<PersistentVector>>() {
+        Some(params) => (None, params.clone()),
+        None => panic!("invalid function params provided to fn {:?}", args),
       },
     }
   };
-  let body = args.pop_front().expect("failed to function get body");
+  let body = args
+    .get(if name.is_some() { 2 } else { 1 })
+    .expect("failed to get function body")
+    .clone();
 
   (name, params, body)
 }
@@ -229,9 +244,9 @@ fn build_function(
 pub fn fn_special_form(stack: &mut Stack) {
   let (name, params, body) = build_function(stack);
 
-  stack.value.push_front(
-    new_function(stack.scope.front().unwrap().clone(), name, params, body).into_value(),
-  );
+  stack
+    .value
+    .push_front(new_function(stack.scope.front().unwrap(), name, params, body).into_value());
 }
 
 #[inline]
@@ -240,21 +255,22 @@ pub fn macro_special_form(stack: &mut Stack) {
 
   stack
     .value
-    .push_front(new_macro(stack.scope.front().unwrap().clone(), name, params, body).into_value());
+    .push_front(new_macro(stack.scope.front().unwrap(), name, params, body).into_value());
 }
 
 #[inline]
 pub fn do_special_form(stack: &mut Stack) {
-  let mut args = stack
+  let args_value = stack
     .value
     .pop_front()
-    .expect("failed to get arguments for do")
-    .downcast::<Object<List>>()
-    .expect("failed to downcast do arguments to List");
+    .expect("failed to get arguments for do");
+  let args = args_value
+    .downcast_ref::<Object<PersistentVector>>()
+    .expect("failed to downcast do arguments to PersistentVector");
 
   let mut first = false;
 
-  while let Some(value) = args.pop_back() {
+  for value in args.iter().rev() {
     if !first {
       first = true;
     } else {
@@ -262,109 +278,123 @@ pub fn do_special_form(stack: &mut Stack) {
     }
     stack.state.push_front(EvalState::Eval);
 
-    stack.value.push_front(value);
+    stack.value.push_front(value.clone());
   }
 }
 
 #[inline]
 pub fn quote_special_form(stack: &mut Stack) {
-  let mut args = stack
+  let mut args_value = stack
     .value
     .pop_front()
-    .expect("failed to get arguments for quote")
-    .downcast::<Object<List>>()
-    .expect("failed to downcast quote arguments to List");
+    .expect("failed to get arguments for quote");
+  let args = args_value
+    .downcast_mut::<Object<PersistentVector>>()
+    .expect("failed to downcast quote arguments to PersistentVector");
 
-  if let Some(value) = args.pop_front() {
-    stack.value.push_front(value);
+  if let Some(value) = args.get(0) {
+    stack.value.push_front(value.clone());
   }
 }
 
 #[inline]
 pub fn eval_special_form(stack: &mut Stack) {
-  let mut args = stack
+  let mut args_value = stack
     .value
     .pop_front()
-    .expect("failed to get arguments for eval")
-    .downcast::<Object<List>>()
-    .expect("failed to downcast eval arguments to List");
+    .expect("failed to get arguments for eval");
+  let args = args_value
+    .downcast_mut::<Object<PersistentVector>>()
+    .expect("failed to downcast eval arguments to PersistentVector");
 
-  if let Some(value) = args.pop_front() {
-    stack.value.push_front(value);
+  if let Some(value) = args.get(0) {
+    stack.value.push_front(value.clone());
     stack.state.push_front(EvalState::Eval);
   }
 }
 
 #[inline]
 pub fn read_special_form(stack: &mut Stack) {
-  let mut args = stack
+  let mut args_value = stack
     .value
     .pop_front()
-    .expect("failed to get arguments for quote")
-    .downcast::<Object<List>>()
-    .expect("failed to downcast quote arguments to List");
+    .expect("failed to get arguments for quote");
+  let args = args_value
+    .downcast_mut::<Object<PersistentVector>>()
+    .expect("failed to downcast quote arguments to PersistentVector");
 
-  if let Some(value) = args.pop_front() {
+  if let Some(value) = args.get(0) {
     let string = value
-      .downcast::<Object<String>>()
+      .downcast_ref::<Object<String>>()
       .expect("failed to downcast read argument to String");
     let char_list = string.chars().collect::<::alloc::vec::Vec<char>>();
-    let mut reader = Reader::new(char_list);
+    let mut reader = Reader::new(None, char_list);
     let value = read_value(
-      stack.scope.front().expect("failed to get scope").clone(),
+      stack.scope.front().expect("failed to get scope"),
       &mut reader,
     );
 
-    stack.value.push_front(value);
+    stack.value.push_front(value.clone());
   } else {
     stack
       .value
-      .push_front(nil_value(stack.scope.front().unwrap().clone()).into_value());
+      .push_front(nil_value(stack.scope.front().unwrap()).clone().into_value());
   }
 }
 
 #[inline]
 pub fn expand_special_form(stack: &mut Stack) {
-  let mut list = stack
+  let scope = stack.scope.front().expect("failed to get scope");
+  let list_value = stack
     .value
     .pop_front()
-    .expect("failed to get arguments for expand")
-    .downcast::<Object<List>>()
-    .expect("failed to downcast expand arguments to List");
+    .expect("failed to get arguments for expand");
+  let args = list_value
+    .downcast_ref::<Object<PersistentVector>>()
+    .expect("failed to downcast expand arguments to PersistentList");
+  let list = args.iter().collect::<PersistentList>();
 
-  if let Some(value) = list.pop_front() {
+  let first = list.front();
+
+  if let Some(value) = first {
+    let new_list = list.pop_front();
     stack.state.push_front(EvalState::Expand);
 
-    stack.value.push_front(list.into_value());
     stack
       .value
-      .push_front(new_list(stack.scope.front().unwrap().clone()).into_value());
+      .push_front(new_persistent_list_from(scope, new_list).into_value());
+    stack
+      .value
+      .push_front(new_persistent_list(scope).into_value());
 
-    if value.kind() == &escape_kind(stack.scope.front().unwrap().clone()) {
+    if value.kind() == escape_kind(scope) {
       let escape = value
-        .downcast::<Object<Escape>>()
+        .downcast_ref::<Object<Escape>>()
         .expect("failed to downcast expand value to Escape");
 
       stack.state.push_front(EvalState::Eval);
       stack.value.push_front(escape.escape_value().clone());
     } else {
-      stack.value.push_front(value);
+      stack.value.push_front(value.clone());
     }
   } else {
-    stack.value.push_front(list.into_value());
+    stack.value.push_front(list_value);
   }
 }
 
 #[inline]
 pub fn throw_special_form(stack: &mut Stack) {
-  let mut args = stack
+  let mut args_value = stack
     .value
     .pop_front()
-    .expect("failed to get arguments for quote")
-    .downcast::<Object<List>>()
-    .expect("failed to downcast quote arguments to List");
-  let value = args.pop_front().unwrap_or_else(|| {
-    nil_value(stack.scope.front().expect("failed to get scope").clone()).into_value()
+    .expect("failed to get arguments for quote");
+  let args = args_value
+    .downcast_mut::<Object<PersistentVector>>()
+    .expect("failed to downcast quote arguments to PersistentVector");
+  let value = args.get(0).map(Clone::clone).unwrap_or_else(|| {
+    nil_value(stack.scope.front().expect("failed to get scope"))
+      .clone()
+      .into_value()
   });
 
   stack.state.push_front(EvalState::Throw);
@@ -378,21 +408,17 @@ pub fn try_special_form(_stack: &mut Stack) {
 }
 
 #[inline]
-pub fn special_form_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("SpecialForm")
-      .expect("failed to get SpecialForm Kind")
-  }
+pub fn special_form_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "SpecialForm").expect("failed to get SpecialForm Kind")
 }
 
 #[inline]
-pub fn new_special_form<F>(scope: Gc<Object<Scope>>, f: F) -> Gc<Object<SpecialForm>>
+pub fn new_special_form<F>(scope: &Gc<Object<PersistentScope>>, f: F) -> Gc<Object<SpecialForm>>
 where
   F: 'static + Fn(&mut Stack),
 {
   new_object(
-    scope.clone(),
-    Object::new(special_form_kind(scope), SpecialForm::new(f)),
+    scope,
+    Object::new(special_form_kind(scope).clone(), SpecialForm::new(f)),
   )
 }

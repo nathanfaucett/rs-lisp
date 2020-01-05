@@ -3,9 +3,11 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 
-use gc::{Gc, Trace};
+use gc::Gc;
 
-use super::{add_external_function, new_bool, nil_value, Kind, List, Map, Object, Scope};
+use super::{
+  add_external_function, new_bool, nil_value, Kind, Map, Object, PersistentScope, PersistentVector,
+};
 
 pub trait Value: Any {
   fn kind(&self) -> &Gc<Object<Kind>>;
@@ -50,116 +52,116 @@ impl dyn Value {
   }
 
   #[inline]
-  pub unsafe fn downcast_unchecked<T: Value>(mut self: Gc<Self>) -> Gc<T> {
-    Gc::from_raw((&mut *self) as *const dyn Value as *mut T)
-  }
-  #[inline]
-  pub fn downcast<T: Value>(self: Gc<Self>) -> Result<Gc<T>, Gc<Self>> {
-    if self.is::<T>() {
-      unsafe { Ok(self.downcast_unchecked()) }
-    } else {
-      Err(self)
-    }
-  }
-
-  #[inline]
-  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
-    add_external_function(scope.clone(), "=", vec!["a", "b"], value_eq);
-    add_external_function(scope.clone(), "!=", vec!["a", "b"], value_ne);
-    add_external_function(scope.clone(), ">", vec!["a", "b"], value_gt);
-    add_external_function(scope.clone(), ">=", vec!["a", "b"], value_ge);
-    add_external_function(scope.clone(), "<", vec!["a", "b"], value_lt);
-    add_external_function(scope.clone(), "<=", vec!["a", "b"], value_le);
+  pub(crate) fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let mut new_scope = add_external_function(scope, "=", vec!["a", "b"], value_eq);
+    new_scope = add_external_function(&new_scope, "!=", vec!["a", "b"], value_ne);
+    new_scope = add_external_function(&new_scope, ">", vec!["a", "b"], value_gt);
+    new_scope = add_external_function(&new_scope, ">=", vec!["a", "b"], value_ge);
+    new_scope = add_external_function(&new_scope, "<", vec!["a", "b"], value_lt);
+    add_external_function(&new_scope, "<=", vec!["a", "b"], value_le)
   }
 }
 
 #[inline]
-pub fn value_eq(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn value_eq(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let a = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(0)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
   let b = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(1)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   new_bool(scope, a == b).into_value()
 }
 
 #[inline]
-pub fn value_ne(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn value_ne(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let a = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(0)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
   let b = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(1)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   new_bool(scope, a != b).into_value()
 }
 
 #[inline]
-pub fn value_gt(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn value_gt(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let a = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(0)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
   let b = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(1)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   new_bool(scope, a > b).into_value()
 }
 
 #[inline]
-pub fn value_ge(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn value_ge(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let a = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(0)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
   let b = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(1)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   new_bool(scope, a >= b).into_value()
 }
 
 #[inline]
-pub fn value_lt(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn value_lt(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let a = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(0)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
   let b = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(1)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   new_bool(scope, a < b).into_value()
 }
 
 #[inline]
-pub fn value_le(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn value_le(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let a = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(0)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
   let b = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(1)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   new_bool(scope, a <= b).into_value()
-}
-
-impl dyn Value {
-  #[inline(always)]
-  pub unsafe fn into_object_unchecked<T>(self: Gc<Self>) -> Gc<Object<T>>
-  where
-    T: 'static + PartialEq + PartialOrd + Hash + fmt::Debug + Trace,
-  {
-    self.downcast_unchecked::<Object<T>>()
-  }
-  #[inline(always)]
-  pub fn into_object<T>(self: Gc<Self>) -> Result<Gc<Object<T>>, Gc<Self>>
-  where
-    T: 'static + PartialEq + PartialOrd + Hash + fmt::Debug + Trace,
-  {
-    self.downcast::<Object<T>>()
-  }
 }
 
 impl PartialOrd for dyn Value {

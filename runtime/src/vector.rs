@@ -1,6 +1,7 @@
 use alloc::vec::{IntoIter, Vec};
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::iter::FromIterator;
 use core::ops::{Deref, DerefMut};
 use core::ptr;
 use core::slice::{Iter, IterMut};
@@ -8,8 +9,8 @@ use core::slice::{Iter, IterMut};
 use gc::{Gc, Trace};
 
 use super::{
-  add_external_function, new_bool, new_kind, new_object, new_usize, nil_value, Kind, List, Object,
-  Scope, Value,
+  add_external_function, new_bool, new_kind, new_object, new_usize, nil_value, scope_get_with_kind,
+  scope_set, Kind, Object, PersistentScope, PersistentVector, Value,
 };
 
 #[derive(Clone, Eq, PartialEq, PartialOrd)]
@@ -81,6 +82,19 @@ impl<'a> IntoIterator for &'a mut Vector {
   }
 }
 
+impl<'a> FromIterator<&'a Gc<dyn Value>> for Vector {
+  #[inline]
+  fn from_iter<I: IntoIterator<Item = &'a Gc<dyn Value>>>(iter: I) -> Self {
+    let mut vector = Vector::new();
+
+    for value in iter {
+      vector.push(value.clone());
+    }
+
+    vector
+  }
+}
+
 impl Deref for Vector {
   type Target = Vec<Gc<dyn Value>>;
 
@@ -104,55 +118,81 @@ impl Vector {
   }
 
   #[inline]
-  pub(crate) fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let vector_kind = new_kind::<Vector>(scope.clone(), "Vector");
-    scope.set("Vector", vector_kind.clone().into_value());
+  pub(crate) fn init_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let vector_kind = new_kind::<Vector>(scope, "Vector");
+    scope_set(scope, "Vector", vector_kind.clone().into_value())
   }
 
   #[inline]
-  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
-    add_external_function(
-      scope.clone(),
-      "vector.is_empty",
-      vec!["vector"],
-      vector_is_empty,
-    );
-    add_external_function(scope.clone(), "vector.len", vec!["vector"], vector_len);
-    add_external_function(
-      scope.clone(),
+  pub fn front(&self) -> Option<&Gc<dyn Value>> {
+    self.0.get(0)
+  }
+  #[inline]
+  pub fn front_mut(&mut self) -> Option<&mut Gc<dyn Value>> {
+    self.0.get_mut(0)
+  }
+  #[inline]
+  pub fn back(&self) -> Option<&Gc<dyn Value>> {
+    if self.is_empty() {
+      None
+    } else {
+      let index = self.0.len() - 1;
+      self.0.get(index)
+    }
+  }
+  #[inline]
+  pub fn back_mut(&mut self) -> Option<&mut Gc<dyn Value>> {
+    if self.is_empty() {
+      None
+    } else {
+      let index = self.0.len() - 1;
+      self.0.get_mut(index)
+    }
+  }
+
+  #[inline]
+  pub(crate) fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let mut new_scope =
+      add_external_function(scope, "vector.is_empty", vec!["vector"], vector_is_empty);
+    new_scope = add_external_function(&new_scope, "vector.len", vec!["vector"], vector_len);
+    new_scope = add_external_function(
+      &new_scope,
       "vector.nth",
       vec!["vector", "index"],
       vector_nth,
     );
-    add_external_function(
-      scope.clone(),
+    new_scope = add_external_function(
+      &new_scope,
       "vector.get",
       vec!["vector", "index"],
       vector_nth,
     );
-    add_external_function(
-      scope.clone(),
+    new_scope = add_external_function(
+      &new_scope,
       "vector.push_front",
       vec!["vector", "...args"],
       vector_push_front,
     );
-    add_external_function(
-      scope.clone(),
+    new_scope = add_external_function(
+      &new_scope,
       "vector.push_back",
       vec!["vector", "...args"],
       vector_push_back,
     );
     add_external_function(
-      scope,
+      &new_scope,
       "vector.insert",
       vec!["vector", "index", "value"],
       vector_insert,
-    );
+    )
   }
 }
 
 #[inline]
-pub fn vector_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn vector_is_empty(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let vector = args
     .front()
     .expect("Vector is nil")
@@ -163,7 +203,10 @@ pub fn vector_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<d
 }
 
 #[inline]
-pub fn vector_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn vector_len(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let vector = args
     .front()
     .expect("Vector is nil")
@@ -174,92 +217,95 @@ pub fn vector_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Va
 }
 
 #[inline]
-pub fn vector_nth(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let vector = args
-    .pop_front()
-    .expect("Vector is nil")
-    .downcast::<Object<Vector>>()
+pub fn vector_nth(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let vector_value = args.get(0).expect("Vector is nil");
+  let vector = vector_value
+    .downcast_ref::<Object<Vector>>()
     .expect("Failed to downcast to Vector");
-  let nth = args
-    .pop_front()
-    .expect("nth is nil")
-    .downcast::<Object<usize>>()
+  let nth_value = args.get(1).expect("nth is nil");
+  let nth = nth_value
+    .downcast_ref::<Object<usize>>()
     .expect("Failed to downcast to USize");
 
   vector
     .get(*nth.value())
     .map(Clone::clone)
-    .unwrap_or_else(|| nil_value(scope).into_value())
+    .unwrap_or_else(|| nil_value(scope).clone().into_value())
 }
 
 #[inline]
-pub fn vector_push_front(_scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut vector = args
-    .pop_front()
-    .expect("Vector is nil")
-    .downcast::<Object<Vector>>()
+pub fn vector_push_front(
+  _scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let mut vector_value = args.front().expect("Vector is nil").clone();
+  let vector = vector_value
+    .downcast_mut::<Object<Vector>>()
     .expect("Failed to downcast argument to Vector");
 
   for value in args.iter() {
     vector.insert(0, value.clone());
   }
 
-  vector.into_value()
+  vector_value
 }
 
 #[inline]
-pub fn vector_push_back(_scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut vector = args
-    .pop_front()
-    .expect("Vector is nil")
-    .downcast::<Object<Vector>>()
+pub fn vector_push_back(
+  _scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let mut vector_value = args.front().expect("Vector is nil").clone();
+  let vector = vector_value
+    .downcast_mut::<Object<Vector>>()
     .expect("Failed to downcast argument to Vector");
 
   for value in args.iter() {
     vector.push(value.clone());
   }
 
-  vector.into_value()
+  vector_value
 }
 
 #[inline]
-pub fn vector_insert(scope: Gc<Object<Scope>>, mut args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut vector = args
-    .pop_front()
-    .expect("Vector is nil")
-    .downcast::<Object<Vector>>()
+pub fn vector_insert(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let mut vector_value = args.front().expect("Vector is nil").clone();
+  let vector = vector_value
+    .downcast_mut::<Object<Vector>>()
     .expect("Failed to downcast argument to Vector");
-  let index = args
-    .pop_front()
-    .expect("index is nil")
-    .downcast::<Object<usize>>()
+  let index_value = args.get(1).expect("index is nil");
+  let index = index_value
+    .downcast_ref::<Object<usize>>()
     .expect("Failed to downcast argument to usize");
   let value = args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+    .get(2)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   vector.insert(*index.value(), value);
-  vector.into_value()
+  vector_value
 }
 
 #[inline]
-pub fn vector_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("Vector")
-      .expect("failed to get Vector Kind")
-  }
+pub fn vector_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Vector").expect("failed to get Vector Kind")
 }
 
 #[inline]
-pub fn new_vector(scope: Gc<Object<Scope>>) -> Gc<Object<Vector>> {
+pub fn new_vector(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<Vector>> {
   new_vector_from(scope, Vector::new())
 }
 
 #[inline]
-pub fn new_vector_from(scope: Gc<Object<Scope>>, vector: Vector) -> Gc<Object<Vector>> {
+pub fn new_vector_from(scope: &Gc<Object<PersistentScope>>, vector: Vector) -> Gc<Object<Vector>> {
   new_object(
-    scope.clone(),
-    Object::new(vector_kind(scope), vector.clone()),
+    scope,
+    Object::new(vector_kind(scope).clone(), vector.clone()),
   )
 }

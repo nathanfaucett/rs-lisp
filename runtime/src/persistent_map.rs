@@ -9,8 +9,8 @@ use hashbrown::hash_map::{IntoIter, Iter};
 use hashbrown::HashMap;
 
 use super::{
-  add_external_function, new_bool, new_kind, new_object, new_usize, nil_value, Kind, List, Object,
-  Scope, Value,
+  add_external_function, new_bool, new_kind, new_object, new_usize, nil_value, scope_get_with_kind,
+  scope_set, Kind, Map, Object, PersistentScope, PersistentVector, Value,
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -123,54 +123,66 @@ impl PersistentMap {
   }
 
   #[inline]
-  pub(crate) fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let persistent_map_kind = new_kind::<PersistentMap>(scope.clone(), "PersistentMap");
-    scope.set("PersistentMap", persistent_map_kind.into_value());
+  pub fn get_mut(&mut self, key: &Gc<dyn Value>) -> Option<&mut Gc<dyn Value>> {
+    self.0.get_mut(key)
   }
 
   #[inline]
-  pub(crate) fn init_scope(scope: Gc<Object<Scope>>) {
-    add_external_function(
-      scope.clone(),
+  pub(crate) fn init_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let persistent_map_kind = new_kind::<PersistentMap>(scope, "PersistentMap");
+    scope_set(
+      scope,
+      "PersistentMap",
+      persistent_map_kind.clone().into_value(),
+    )
+  }
+
+  #[inline]
+  pub(crate) fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let mut new_scope = add_external_function(
+      scope,
       "persistent_map.is_empty",
       vec!["persistent_map"],
       persistent_map_is_empty,
     );
-    add_external_function(
-      scope.clone(),
+    new_scope = add_external_function(
+      &new_scope,
       "persistent_map.len",
       vec!["persistent_map"],
       persistent_map_len,
     );
-    add_external_function(
-      scope.clone(),
+    new_scope = add_external_function(
+      &new_scope,
       "persistent_map.get",
       vec!["persistent_map", "key"],
       persistent_map_get,
     );
-    add_external_function(
-      scope.clone(),
+    new_scope = add_external_function(
+      &new_scope,
       "persistent_map.remove",
       vec!["persistent_map", "key"],
       persistent_map_remove,
     );
-    add_external_function(
-      scope.clone(),
+    new_scope = add_external_function(
+      &new_scope,
       "persistent_map.has",
       vec!["persistent_map", "key"],
       persistent_map_has,
     );
     add_external_function(
-      scope,
+      &new_scope,
       "persistent_map.set",
       vec!["persistent_map", "key", "value"],
       persistent_map_set,
-    );
+    )
   }
 }
 
 #[inline]
-pub fn persistent_map_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn persistent_map_is_empty(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let persistent_map = args
     .front()
     .expect("PersistentMap is nil")
@@ -181,7 +193,10 @@ pub fn persistent_map_is_empty(scope: Gc<Object<Scope>>, args: Gc<Object<List>>)
 }
 
 #[inline]
-pub fn persistent_map_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
+pub fn persistent_map_len(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
   let persistent_map = args
     .front()
     .expect("PersistentMap is nil")
@@ -192,86 +207,96 @@ pub fn persistent_map_len(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> G
 }
 
 #[inline]
-pub fn persistent_map_has(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let persistent_map = mut_args
-    .pop_front()
-    .expect("PersistentMap is nil")
-    .downcast::<Object<PersistentMap>>()
+pub fn persistent_map_has(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let persistent_map_value = args.front().expect("PersistentMap is nil").clone();
+  let persistent_map = persistent_map_value
+    .downcast_ref::<Object<PersistentMap>>()
     .expect("Failed to downcast to PersistentMap");
-  let key = mut_args.pop_front().expect("key is nil");
+  let key = args.get(1).expect("key is nil");
 
-  new_bool(scope, persistent_map.has(&key)).into_value()
+  new_bool(scope, persistent_map.has(key)).into_value()
 }
 
 #[inline]
-pub fn persistent_map_get(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let persistent_map = mut_args
-    .pop_front()
-    .expect("PersistentMap is nil")
-    .downcast::<Object<PersistentMap>>()
+pub fn persistent_map_get(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let persistent_map_value = args.front().expect("PersistentMap is nil").clone();
+  let persistent_map = persistent_map_value
+    .downcast_ref::<Object<PersistentMap>>()
     .expect("Failed to downcast to PersistentMap");
-  let key = mut_args.pop_front().expect("key is nil");
+  let key = args.get(1).expect("key is nil");
 
   persistent_map
-    .get(&key)
+    .get(key)
     .map(Clone::clone)
-    .unwrap_or_else(|| nil_value(scope).into_value())
+    .unwrap_or_else(|| nil_value(scope).clone().into_value())
 }
 
 #[inline]
-pub fn persistent_map_remove(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let persistent_map = mut_args
-    .pop_front()
-    .expect("PersistentMap is nil")
-    .downcast::<Object<PersistentMap>>()
+pub fn persistent_map_remove(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let persistent_map_value = args.front().expect("PersistentMap is nil").clone();
+  let persistent_map = persistent_map_value
+    .downcast_ref::<Object<PersistentMap>>()
     .expect("Failed to downcast to PersistentMap");
-  let key = mut_args.pop_front().expect("key is nil");
+  let key = args.get(1).expect("key is nil");
 
-  new_persistent_map_from(scope, persistent_map.remove(&key)).into_value()
+  new_persistent_map_from(scope, persistent_map.remove(key)).into_value()
 }
 
 #[inline]
-pub fn persistent_map_set(scope: Gc<Object<Scope>>, args: Gc<Object<List>>) -> Gc<dyn Value> {
-  let mut mut_args = args.clone();
-  let persistent_map = mut_args
-    .pop_front()
-    .expect("PersistentMap is nil")
-    .downcast::<Object<PersistentMap>>()
+pub fn persistent_map_set(
+  scope: &Gc<Object<PersistentScope>>,
+  args: &Gc<Object<PersistentVector>>,
+) -> Gc<dyn Value> {
+  let persistent_map_value = args.front().expect("PersistentMap is nil").clone();
+  let persistent_map = persistent_map_value
+    .downcast_ref::<Object<PersistentMap>>()
     .expect("Failed to downcast to PersistentMap");
-  let key = mut_args.pop_front().expect("key is nil");
-  let value = mut_args
-    .pop_front()
-    .unwrap_or_else(|| nil_value(scope.clone()).into_value());
+  let key = args.get(1).expect("key is nil").clone();
+  let value = args
+    .get(1)
+    .map(Clone::clone)
+    .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
   new_persistent_map_from(scope, persistent_map.set(key, value)).into_value()
 }
 
 #[inline]
-pub fn persistent_map_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("PersistentMap")
-      .expect("failed to get PersistentMap Kind")
-  }
+pub fn persistent_map_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "PersistentMap").expect("failed to get PersistentMap Kind")
 }
 #[inline]
-pub fn new_persistent_map(scope: Gc<Object<Scope>>) -> Gc<Object<PersistentMap>> {
-  new_object(
-    scope.clone(),
-    Object::new(persistent_map_kind(scope), PersistentMap::new()),
-  )
+pub fn new_persistent_map(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentMap>> {
+  new_persistent_map_from(scope, PersistentMap::new())
 }
 
 #[inline]
 pub fn new_persistent_map_from(
-  scope: Gc<Object<Scope>>,
+  scope: &Gc<Object<PersistentScope>>,
   persistent_map: PersistentMap,
 ) -> Gc<Object<PersistentMap>> {
   new_object(
-    scope.clone(),
-    Object::new(persistent_map_kind(scope), persistent_map),
+    scope,
+    Object::new(persistent_map_kind(scope).clone(), persistent_map),
+  )
+}
+
+#[inline]
+pub fn new_persistent_map_from_with_meta(
+  scope: &Gc<Object<PersistentScope>>,
+  persistent_map: PersistentMap,
+  meta: Gc<Object<Map>>,
+) -> Gc<Object<PersistentMap>> {
+  new_object(
+    scope,
+    Object::new_with_meta(persistent_map_kind(scope).clone(), persistent_map, meta),
   )
 }

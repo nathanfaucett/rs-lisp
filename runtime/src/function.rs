@@ -7,15 +7,16 @@ use core::ptr;
 use gc::{Gc, Trace};
 
 use super::{
-  eval, new_kind, new_list, new_list_from, new_object, new_symbol, FunctionKind, Kind, List,
-  Object, Scope, Symbol, Value,
+  eval, new_kind, new_object, new_persistent_list_from, new_persistent_vector_from, new_symbol,
+  scope_get_with_kind, scope_set, FunctionKind, Kind, Object, PersistentList, PersistentScope,
+  PersistentVector, Symbol, Value,
 };
 
 #[derive(Eq)]
 pub struct Function {
   name: Option<Gc<Object<Symbol>>>,
-  scope: Gc<Object<Scope>>,
-  params: Gc<Object<List>>,
+  scope: Gc<Object<PersistentScope>>,
+  params: Gc<Object<PersistentVector>>,
   body: FunctionKind,
 }
 
@@ -69,8 +70,8 @@ impl Function {
   #[inline(always)]
   pub fn new(
     name: Option<Gc<Object<Symbol>>>,
-    scope: Gc<Object<Scope>>,
-    params: Gc<Object<List>>,
+    scope: Gc<Object<PersistentScope>>,
+    params: Gc<Object<PersistentVector>>,
     body: Gc<dyn Value>,
   ) -> Self {
     Function {
@@ -84,12 +85,12 @@ impl Function {
   #[inline(always)]
   pub fn new_external<F>(
     name: Option<Gc<Object<Symbol>>>,
-    scope: Gc<Object<Scope>>,
-    params: Gc<Object<List>>,
+    scope: Gc<Object<PersistentScope>>,
+    params: Gc<Object<PersistentVector>>,
     body: F,
   ) -> Self
   where
-    F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
+    F: 'static + Fn(&Gc<Object<PersistentScope>>, &Gc<Object<PersistentVector>>) -> Gc<dyn Value>,
   {
     Function {
       name: name,
@@ -104,11 +105,11 @@ impl Function {
     self.name.as_ref()
   }
   #[inline(always)]
-  pub fn scope(&self) -> &Gc<Object<Scope>> {
+  pub fn scope(&self) -> &Gc<Object<PersistentScope>> {
     &self.scope
   }
   #[inline(always)]
-  pub fn params(&self) -> &Gc<Object<List>> {
+  pub fn params(&self) -> &Gc<Object<PersistentVector>> {
     &self.params
   }
   #[inline(always)]
@@ -117,160 +118,153 @@ impl Function {
   }
 
   #[inline]
-  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let function_kind = new_kind::<Function>(scope.clone(), "Function");
-    let macro_kind = new_kind::<Function>(scope.clone(), "Macro");
+  pub(crate) fn init_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let function_kind = new_kind::<Function>(scope, "Function");
+    let macro_kind = new_kind::<Function>(scope, "Macro");
 
-    scope.set("Function", function_kind.into_value());
-    scope.set("Macro", macro_kind.into_value());
+    let new_scope = scope_set(scope, "Function", function_kind.into_value());
+    scope_set(&new_scope, "Macro", macro_kind.into_value())
   }
 }
 
 #[inline]
-pub fn function_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("Function")
-      .expect("failed to get Function Kind")
-  }
+pub fn function_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Function").expect("failed to get Function Kind")
 }
 #[inline]
 pub fn new_function(
-  scope: Gc<Object<Scope>>,
+  scope: &Gc<Object<PersistentScope>>,
   name: Option<Gc<Object<Symbol>>>,
-  params: Gc<Object<List>>,
+  params: Gc<Object<PersistentVector>>,
   body: Gc<dyn Value>,
 ) -> Gc<Object<Function>> {
   new_object(
-    scope.clone(),
+    scope,
     Object::new(
-      function_kind(scope.clone()),
-      Function::new(name, scope, params, body),
+      function_kind(scope).clone(),
+      Function::new(name, scope.clone(), params, body),
     ),
   )
 }
 #[inline]
 pub fn new_external_function<F>(
-  scope: Gc<Object<Scope>>,
+  scope: &Gc<Object<PersistentScope>>,
   name: Option<Gc<Object<Symbol>>>,
-  params: Gc<Object<List>>,
+  params: Gc<Object<PersistentVector>>,
   body: F,
 ) -> Gc<Object<Function>>
 where
-  F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
+  F: 'static + Fn(&Gc<Object<PersistentScope>>, &Gc<Object<PersistentVector>>) -> Gc<dyn Value>,
 {
   new_object(
-    scope.clone(),
+    scope,
     Object::new(
-      function_kind(scope.clone()),
-      Function::new_external(name, scope, params, body),
+      function_kind(scope).clone(),
+      Function::new_external(name, scope.clone(), params, body),
     ),
   )
 }
 
 #[inline]
 pub fn add_external_function<F, N>(
-  mut scope: Gc<Object<Scope>>,
+  scope: &Gc<Object<PersistentScope>>,
   name: N,
   params: ::alloc::vec::Vec<N>,
   body: F,
-) -> Gc<Object<Function>>
+) -> Gc<Object<PersistentScope>>
 where
-  F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
+  F: 'static + Fn(&Gc<Object<PersistentScope>>, &Gc<Object<PersistentVector>>) -> Gc<dyn Value>,
   N: ToString,
 {
-  let mut list = new_list(scope.clone());
+  let mut persistent_vector = PersistentVector::new();
 
   for param in params {
-    list.push_back(new_symbol(scope.clone(), param).into_value());
+    persistent_vector = persistent_vector.push(new_symbol(scope, param).into_value());
   }
 
   let function = new_external_function(
-    scope.clone(),
-    Some(new_symbol(scope.clone(), name.to_string())),
-    list,
+    scope,
+    Some(new_symbol(scope, name.to_string())),
+    new_persistent_vector_from(scope, persistent_vector),
     body,
   );
-  scope.set(&(name.to_string()), function.clone().into_value());
-  function
+  scope_set(scope, &(name.to_string()), function.clone().into_value())
 }
 
 #[inline]
-pub fn macro_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("Macro")
-      .expect("failed to get Macro Kind")
-  }
+pub fn macro_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Macro").expect("failed to get Macro Kind")
 }
 #[inline]
 pub fn new_macro(
-  scope: Gc<Object<Scope>>,
+  scope: &Gc<Object<PersistentScope>>,
   name: Option<Gc<Object<Symbol>>>,
-  params: Gc<Object<List>>,
+  params: Gc<Object<PersistentVector>>,
   body: Gc<dyn Value>,
 ) -> Gc<Object<Function>> {
   new_object(
-    scope.clone(),
+    scope,
     Object::new(
-      macro_kind(scope.clone()),
+      macro_kind(scope).clone(),
       Function::new(name, scope.clone(), params, body),
     ),
   )
 }
 #[inline]
 pub fn new_external_macro<F>(
-  scope: Gc<Object<Scope>>,
+  scope: &Gc<Object<PersistentScope>>,
   name: Option<Gc<Object<Symbol>>>,
-  params: Gc<Object<List>>,
+  params: Gc<Object<PersistentVector>>,
   body: F,
 ) -> Gc<Object<Function>>
 where
-  F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
+  F: 'static + Fn(&Gc<Object<PersistentScope>>, &Gc<Object<PersistentVector>>) -> Gc<dyn Value>,
 {
   new_object(
-    scope.clone(),
+    scope,
     Object::new(
-      macro_kind(scope.clone()),
-      Function::new_external(name, scope, params, body),
+      macro_kind(scope).clone(),
+      Function::new_external(name, scope.clone(), params, body),
     ),
   )
 }
 
 #[inline]
 pub fn add_external_macro<F, N>(
-  mut scope: Gc<Object<Scope>>,
+  scope: &Gc<Object<PersistentScope>>,
   name: N,
   params: ::alloc::vec::Vec<N>,
   body: F,
-) -> Gc<Object<Function>>
+) -> Gc<Object<PersistentScope>>
 where
-  F: 'static + Fn(Gc<Object<Scope>>, Gc<Object<List>>) -> Gc<dyn Value>,
+  F: 'static + Fn(&Gc<Object<PersistentScope>>, &Gc<Object<PersistentVector>>) -> Gc<dyn Value>,
   N: ToString,
 {
-  let mut list = new_list(scope.clone());
+  let mut persistent_vector = PersistentVector::new();
 
   for param in params {
-    list.push_back(new_symbol(scope.clone(), param).into_value());
+    persistent_vector = persistent_vector.push(new_symbol(scope, param).into_value());
   }
 
   let function = new_external_macro(
-    scope.clone(),
-    Some(new_symbol(scope.clone(), name.to_string())),
-    list,
+    scope,
+    Some(new_symbol(scope, name.to_string())),
+    new_persistent_vector_from(scope, persistent_vector),
     body,
   );
-  scope.set(&(name.to_string()), function.clone().into_value());
-  function
+  scope_set(scope, &(name.to_string()), function.clone().into_value())
 }
 
 #[inline]
 pub fn call_function(
-  scope: Gc<Object<Scope>>,
+  scope: &Gc<Object<PersistentScope>>,
   callable: Gc<Object<Function>>,
-  arguments: Gc<Object<List>>,
-) -> Gc<dyn Value> {
-  let mut function_call = new_list_from(scope.clone(), arguments.value().clone());
-  function_call.push_front(callable.into_value());
-  eval(scope, function_call.into_value())
+  arguments: Gc<Object<PersistentVector>>,
+) -> (Gc<Object<PersistentScope>>, Gc<dyn Value>) {
+  let mut persistent_list = arguments.value().iter().collect::<PersistentList>();
+  persistent_list = persistent_list.push_front(callable.into_value());
+  eval(
+    scope,
+    new_persistent_list_from(scope, persistent_list).into_value(),
+  )
 }

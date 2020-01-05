@@ -4,7 +4,9 @@ use core::ops::{Deref, DerefMut};
 
 use gc::{Gc, Trace};
 
-use super::{new_kind, new_object, Kind, Object, Scope};
+use super::{
+  new_kind, new_object, scope_get_with_kind, scope_set, Kind, Map, Object, PersistentScope,
+};
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Keyword(String);
@@ -60,27 +62,41 @@ impl Keyword {
   }
 
   #[inline]
-  pub(crate) unsafe fn init_kind(mut scope: Gc<Object<Scope>>) {
-    let keyword_kind = new_kind::<Keyword>(scope.clone(), "Keyword");
-    scope.set("Keyword", keyword_kind.into_value());
+  pub(crate) fn init_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let keyword_kind = new_kind::<Keyword>(scope, "Keyword");
+    scope_set(scope, "Keyword", keyword_kind.into_value())
   }
 }
 
 #[inline]
-pub fn keyword_kind(scope: Gc<Object<Scope>>) -> Gc<Object<Kind>> {
-  unsafe {
-    scope
-      .get_with_kind::<Kind>("Keyword")
-      .expect("failed to get Keyword Kind")
-  }
+pub fn keyword_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Keyword").expect("failed to get Keyword Kind")
 }
 #[inline]
-pub fn new_keyword<T>(scope: Gc<Object<Scope>>, value: T) -> Gc<Object<Keyword>>
+pub fn new_keyword<T>(scope: &Gc<Object<PersistentScope>>, value: T) -> Gc<Object<Keyword>>
 where
   T: ToString,
 {
   new_object(
-    scope.clone(),
-    Object::new(keyword_kind(scope), Keyword::new(value.to_string())),
+    scope,
+    Object::new(keyword_kind(scope).clone(), Keyword::new(value.to_string())),
+  )
+}
+#[inline]
+pub fn new_keyword_with_meta<T>(
+  scope: &Gc<Object<PersistentScope>>,
+  value: T,
+  meta: Gc<Object<Map>>,
+) -> Gc<Object<Keyword>>
+where
+  T: ToString,
+{
+  new_object(
+    scope,
+    Object::new_with_meta(
+      keyword_kind(scope).clone(),
+      Keyword::new(value.to_string()),
+      meta,
+    ),
   )
 }
