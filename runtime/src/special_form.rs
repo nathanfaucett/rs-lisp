@@ -345,13 +345,13 @@ pub fn read_special_form(stack: &mut Stack) {
 #[inline]
 pub fn expand_special_form(stack: &mut Stack) {
   let scope = stack.scope.front().expect("failed to get scope");
-  let list_value = stack
+  let mut args_value = stack
     .value
     .pop_front()
     .expect("failed to get arguments for expand");
-  let args = list_value
-    .downcast_ref::<Object<PersistentVector>>()
-    .expect("failed to downcast expand arguments to PersistentList");
+  let args = args_value
+    .downcast_mut::<Object<PersistentVector>>()
+    .expect("failed to downcast expand arguments to PersistentVector");
   let list = args.iter().collect::<PersistentList>();
 
   let first = list.front();
@@ -378,7 +378,9 @@ pub fn expand_special_form(stack: &mut Stack) {
       stack.value.push_front(value.clone());
     }
   } else {
-    stack.value.push_front(list_value);
+    stack
+      .value
+      .push_front(new_persistent_list_from(scope, list).into_value());
   }
 }
 

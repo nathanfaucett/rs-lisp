@@ -75,16 +75,13 @@ pub fn new_symbol<T>(scope: &Gc<Object<PersistentScope>>, value: T) -> Gc<Object
 where
   T: ToString,
 {
-  new_object(
-    scope,
-    Object::new(symbol_kind(scope).clone(), Symbol::new(value.to_string())),
-  )
+  new_symbol_with_meta(scope, value, None)
 }
 #[inline]
 pub fn new_symbol_with_meta<T>(
   scope: &Gc<Object<PersistentScope>>,
   value: T,
-  meta: Gc<Object<Map>>,
+  meta: Option<Gc<Object<Map>>>,
 ) -> Gc<Object<Symbol>>
 where
   T: ToString,

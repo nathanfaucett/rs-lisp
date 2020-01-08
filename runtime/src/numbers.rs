@@ -223,15 +223,6 @@ binary!(isize_eq, isize, eq, new_bool);
 // binary!(f64_eq, f64, eq, new_bool);
 
 #[inline]
-pub fn usize_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
-  scope_get_with_kind::<Kind>(scope, "USize").expect("failed to get USize Kind")
-}
-#[inline]
-pub fn new_usize(scope: &Gc<Object<PersistentScope>>, value: usize) -> Gc<Object<usize>> {
-  new_object(scope, Object::new(usize_kind(scope).clone(), value))
-}
-
-#[inline]
 pub fn i8_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
   scope_get_with_kind::<Kind>(scope, "I8").expect("failed to get I8 Kind")
 }
@@ -310,6 +301,15 @@ pub fn u64_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
 #[inline]
 pub fn new_u64(scope: &Gc<Object<PersistentScope>>, value: u64) -> Gc<Object<u64>> {
   new_object(scope, Object::new(u64_kind(scope).clone(), value))
+}
+
+#[inline]
+pub fn usize_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "USize").expect("failed to get USize Kind")
+}
+#[inline]
+pub fn new_usize(scope: &Gc<Object<PersistentScope>>, value: usize) -> Gc<Object<usize>> {
+  new_object(scope, Object::new(usize_kind(scope).clone(), value))
 }
 
 // #[inline]

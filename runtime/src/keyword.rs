@@ -77,16 +77,13 @@ pub fn new_keyword<T>(scope: &Gc<Object<PersistentScope>>, value: T) -> Gc<Objec
 where
   T: ToString,
 {
-  new_object(
-    scope,
-    Object::new(keyword_kind(scope).clone(), Keyword::new(value.to_string())),
-  )
+  new_keyword_with_meta(scope, value, None)
 }
 #[inline]
 pub fn new_keyword_with_meta<T>(
   scope: &Gc<Object<PersistentScope>>,
   value: T,
-  meta: Gc<Object<Map>>,
+  meta: Option<Gc<Object<Map>>>,
 ) -> Gc<Object<Keyword>>
 where
   T: ToString,

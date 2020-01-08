@@ -347,17 +347,14 @@ pub fn new_persistent_vector_from(
   scope: &Gc<Object<PersistentScope>>,
   persistent_vector: PersistentVector,
 ) -> Gc<Object<PersistentVector>> {
-  new_object(
-    scope,
-    Object::new(persistent_vector_kind(scope).clone(), persistent_vector),
-  )
+  new_persistent_vector_from_with_meta(scope, persistent_vector, None)
 }
 
 #[inline]
 pub fn new_persistent_vector_from_with_meta(
   scope: &Gc<Object<PersistentScope>>,
   persistent_vector: PersistentVector,
-  meta: Gc<Object<Map>>,
+  meta: Option<Gc<Object<Map>>>,
 ) -> Gc<Object<PersistentVector>> {
   new_object(
     scope,

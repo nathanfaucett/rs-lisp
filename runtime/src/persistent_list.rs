@@ -286,17 +286,14 @@ pub fn new_persistent_list_from(
   scope: &Gc<Object<PersistentScope>>,
   persistent_list: PersistentList,
 ) -> Gc<Object<PersistentList>> {
-  new_object(
-    scope,
-    Object::new(persistent_list_kind(scope).clone(), persistent_list.clone()),
-  )
+  new_persistent_list_from_with_meta(scope, persistent_list, None)
 }
 
 #[inline]
 pub fn new_persistent_list_from_with_meta(
   scope: &Gc<Object<PersistentScope>>,
   persistent_list: PersistentList,
-  meta: Gc<Object<Map>>,
+  meta: Option<Gc<Object<Map>>>,
 ) -> Gc<Object<PersistentList>> {
   new_object(
     scope,

@@ -22,19 +22,14 @@ where
 {
   #[inline(always)]
   pub fn new(kind: Gc<Object<Kind>>, value: T) -> Self {
-    Object {
-      marked: false,
-      kind: kind,
-      meta: None,
-      value: value,
-    }
+    Self::new_with_meta(kind, value, None)
   }
   #[inline(always)]
-  pub fn new_with_meta(kind: Gc<Object<Kind>>, value: T, meta: Gc<Object<Map>>) -> Self {
+  pub fn new_with_meta(kind: Gc<Object<Kind>>, value: T, meta: Option<Gc<Object<Map>>>) -> Self {
     Object {
       marked: false,
       kind: kind,
-      meta: Some(meta),
+      meta: meta,
       value: value,
     }
   }

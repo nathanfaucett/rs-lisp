@@ -283,17 +283,14 @@ pub fn new_persistent_map_from(
   scope: &Gc<Object<PersistentScope>>,
   persistent_map: PersistentMap,
 ) -> Gc<Object<PersistentMap>> {
-  new_object(
-    scope,
-    Object::new(persistent_map_kind(scope).clone(), persistent_map),
-  )
+  new_persistent_map_from_with_meta(scope, persistent_map, None)
 }
 
 #[inline]
 pub fn new_persistent_map_from_with_meta(
   scope: &Gc<Object<PersistentScope>>,
   persistent_map: PersistentMap,
-  meta: Gc<Object<Map>>,
+  meta: Option<Gc<Object<Map>>>,
 ) -> Gc<Object<PersistentMap>> {
   new_object(
     scope,

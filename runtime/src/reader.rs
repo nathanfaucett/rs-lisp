@@ -144,7 +144,7 @@ fn read_list(
     }
   }
 
-  new_persistent_list_from_with_meta(scope, persistent_list, meta)
+  new_persistent_list_from_with_meta(scope, persistent_list, Some(meta))
 }
 
 #[inline]
@@ -166,7 +166,7 @@ fn read_vec(
     }
   }
 
-  new_persistent_vector_from_with_meta(scope, persistent_vector, meta)
+  new_persistent_vector_from_with_meta(scope, persistent_vector, Some(meta))
 }
 
 #[inline]
@@ -198,7 +198,7 @@ fn read_map(scope: &Gc<Object<PersistentScope>>, reader: &mut Reader) -> Gc<Obje
     }
   }
 
-  new_persistent_map_from_with_meta(scope, persistent_map, meta)
+  new_persistent_map_from_with_meta(scope, persistent_map, Some(meta))
 }
 
 #[inline]
@@ -215,7 +215,7 @@ fn read_symbol(scope: &Gc<Object<PersistentScope>>, reader: &mut Reader) -> Gc<O
     }
   }
 
-  new_symbol_with_meta(scope, string, meta)
+  new_symbol_with_meta(scope, string, Some(meta))
 }
 
 #[inline]
@@ -232,7 +232,7 @@ fn read_keyword(scope: &Gc<Object<PersistentScope>>, reader: &mut Reader) -> Gc<
     }
   }
 
-  new_keyword_with_meta(scope, string, meta)
+  new_keyword_with_meta(scope, string, Some(meta))
 }
 
 #[inline]

@@ -112,11 +112,11 @@ fn eval_eval(stack: &mut Stack) {
   let scope = stack.scope.front().unwrap();
 
   if value.kind() == symbol_kind(scope) {
-    let string = value
+    let symbol = value
       .downcast_ref::<Object<Symbol>>()
       .expect("failed to downcast value to Symbol");
 
-    if let Some(value) = scope_get(scope, string.value().deref()) {
+    if let Some(value) = scope_get(scope, symbol.value().deref()) {
       stack.value.push_front(value.clone());
     } else {
       stack
@@ -129,9 +129,10 @@ fn eval_eval(stack: &mut Stack) {
       .expect("failed to downcast value to List")
       .value();
     let first = list.front();
-    let arguments = list.pop_front();
 
     if let Some(value) = first {
+      let arguments = list.pop_front();
+
       stack.state.push_front(EvalState::Call);
       stack.value.push_front(
         new_persistent_vector_from(scope, arguments.iter().collect::<PersistentVector>())
@@ -151,15 +152,20 @@ fn eval_eval(stack: &mut Stack) {
     if vector.is_empty() {
       stack.value.push_front(value);
     } else {
+      let value = vector.front().unwrap().clone();
+      let new_vector = vector.pop_front();
+
       stack.state.push_front(EvalState::EvalVec);
 
-      stack.value.push_front(value.clone());
+      stack
+        .value
+        .push_front(new_persistent_vector_from(scope, new_vector).into_value());
       stack
         .value
         .push_front(new_persistent_vector(scope).into_value());
 
       stack.state.push_front(EvalState::Eval);
-      stack.value.push_front(vector.front().unwrap().clone());
+      stack.value.push_front(value);
     }
   } else if value.kind() == persistent_map_kind(scope) {
     let mut key_values = new_linked_map(
@@ -262,7 +268,9 @@ fn eval_eval_vec(stack: &mut Stack) {
     stack.state.push_front(EvalState::Eval);
     stack.value.push_front(value.clone());
   } else {
-    stack.value.push_front(evaluated_vector.into_value());
+    stack
+      .value
+      .push_front(new_persistent_vector_from(scope, new_evaluated_vector).into_value());
   }
 }
 
@@ -357,15 +365,19 @@ fn eval_call(stack: &mut Stack) {
     if arguments.is_empty() {
       stack.value.push_front(arguments_value);
     } else {
+      let value = arguments.front().unwrap().clone();
+      let new_arguments = arguments.pop_front();
       stack.state.push_front(EvalState::EvalVec);
 
-      stack.value.push_front(arguments_value.clone());
+      stack
+        .value
+        .push_front(new_persistent_vector_from(scope, new_arguments).into_value());
       stack
         .value
         .push_front(new_persistent_vector(scope).into_value());
 
       stack.state.push_front(EvalState::Eval);
-      stack.value.push_front(arguments.front().unwrap().clone());
+      stack.value.push_front(value);
     }
   } else if callable.kind() == macro_kind(scope) {
     stack.state.push_front(EvalState::Eval);
@@ -600,16 +612,16 @@ fn eval_expand(stack: &mut Stack) {
   let evaluated_list = stack
     .value
     .pop_front()
-    .expect("failed to get evaluated vec from stack")
+    .expect("failed to get evaluated list from stack")
     .downcast_ref::<Object<PersistentList>>()
-    .expect("failed to downcast evaluated vec to vec")
+    .expect("failed to downcast evaluated list to PersistentList")
     .clone();
   let list = stack
     .value
     .pop_front()
-    .expect("failed to get vec from stack")
+    .expect("failed to get list from stack")
     .downcast_ref::<Object<PersistentList>>()
-    .expect("failed to downcast vec to Vec")
+    .expect("failed to downcast list to PersistentList")
     .clone();
   let scope = stack.scope.front().unwrap();
 
@@ -637,13 +649,14 @@ fn eval_expand(stack: &mut Stack) {
       stack.value.push_front(escape.escape_value().clone());
     } else if value.kind() == persistent_list_kind(scope) {
       stack.value.push_front(
-        new_persistent_list_from(
+        new_persistent_vector_from(
           scope,
           value
             .downcast_ref::<Object<PersistentList>>()
             .expect("failed to downcast expand value to List")
             .value()
-            .clone(),
+            .iter()
+            .collect::<PersistentVector>(),
         )
         .into_value(),
       );
@@ -652,6 +665,8 @@ fn eval_expand(stack: &mut Stack) {
       stack.value.push_front(value.clone());
     }
   } else {
-    stack.value.push_front(evaluated_list.into_value());
+    stack
+      .value
+      .push_front(new_persistent_list_from(scope, new_evaluated_list).into_value());
   }
 }
