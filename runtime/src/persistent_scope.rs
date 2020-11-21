@@ -1,4 +1,4 @@
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use core::cmp::Ordering;
 use core::fmt::{self, Debug, Write};
 use core::hash::{Hash, Hasher};

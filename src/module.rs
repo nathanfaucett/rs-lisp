@@ -2,12 +2,13 @@ use std::{collections::LinkedList, ops::Deref};
 
 use gc::Gc;
 use runtime::{
-  new_external_function, new_map, new_persistent_list_from, new_persistent_vector_from, new_string,
-  new_symbol, new_vector, nil_value, scope_get, scope_get_mut, scope_parent, Map, Object,
-  PersistentScope, PersistentVector, Symbol, Value, Vector,
+  get_scope_root, new_external_function, new_map, new_persistent_list_from,
+  new_persistent_vector_from, new_string, new_symbol, new_vector, nil_value, scope_get,
+  scope_get_mut, scope_parent, Map, Object, PersistentScope, PersistentVector, Symbol, Value,
+  Vector,
 };
 
-use super::{dylib_loader_lisp_fn, file_loader_lisp_fn, get_scope_root, load};
+use super::{dylib_loader_lisp_fn, file_loader_lisp_fn, load};
 
 #[inline]
 pub fn new_module(

@@ -162,14 +162,14 @@ impl GcAllocator {
       marked
     });
 
+    for value in self.values.iter_mut() {
+      value.trace(false);
+    }
+
     for v in removed.into_iter() {
       unsafe {
         v.unsafe_drop();
       }
-    }
-
-    for value in self.values.iter_mut() {
-      value.trace(false);
     }
 
     self.size -= size;
@@ -204,7 +204,6 @@ pub fn gc_allocator_collect(
     .downcast_ref::<Object<GcAllocator>>()
     .expect("Failed to downcast to GcAllocator")
     .clone();
-
   new_usize(scope, gc_allocator.collect(scope)).into_value()
 }
 

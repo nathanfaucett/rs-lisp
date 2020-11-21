@@ -3,11 +3,11 @@ use std::path::Path;
 
 use gc::Gc;
 use runtime::{
-  add_external_macro, new_map, new_scope, new_string, nil_value, scope_set, Map, Object,
-  PersistentScope, PersistentVector, Value,
+  add_external_macro, get_scope_root, new_map, new_scope, new_string, nil_value, scope_set, Map,
+  Object, PersistentScope, PersistentVector, Value,
 };
 
-use super::super::{export, get_scope_root, import, new_module, run_in_scope};
+use super::super::{export, import, new_module, run_in_scope};
 
 #[inline]
 pub fn file_loader_lisp_fn(
