@@ -16,7 +16,7 @@ use super::{
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct PersistentScope {
-  map: HashMap<String, Gc<dyn Value>>,
+  pub map: HashMap<String, Gc<dyn Value>>,
   parent: Option<Gc<Object<PersistentScope>>>,
 }
 
@@ -307,6 +307,15 @@ pub fn new_persistent_scope_from(
 #[inline]
 pub fn scope_parent(scope: &Gc<Object<PersistentScope>>) -> Option<&Gc<Object<PersistentScope>>> {
   scope.parent.as_ref()
+}
+
+#[inline]
+pub fn get_scope_root(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<PersistentScope>> {
+  if let Some(parent) = scope_parent(scope) {
+    get_scope_root(parent)
+  } else {
+    scope
+  }
 }
 
 #[inline]

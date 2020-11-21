@@ -439,6 +439,7 @@ fn eval_call_evaluated(stack: &mut Stack) {
 
 #[inline]
 fn eval_call_function(stack: &mut Stack) {
+  let stack_scope = stack.scope.front().expect("failed to get scope from stack");
   let arguments = stack
     .value
     .pop_front()
@@ -453,7 +454,11 @@ fn eval_call_function(stack: &mut Stack) {
     .downcast_ref::<Object<Function>>()
     .expect("failed to downcast callable to Function")
     .clone();
-  let mut scope = new_scope(callable.scope());
+  let mut scope = if callable.kind() == macro_kind(stack_scope) {
+    new_scope(stack_scope)
+  } else {
+    new_scope(callable.scope())
+  };
 
   scope = scope_set(&scope, "arguments", arguments.clone().into_value());
 

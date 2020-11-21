@@ -1,10 +1,10 @@
-use std::ops::Deref;
+use std::{collections::LinkedList, ops::Deref};
 
 use gc::Gc;
 use runtime::{
-  new_external_function, new_map, new_persistent_vector_from, new_string, new_symbol, new_vector,
-  nil_value, scope_get, scope_get_mut, scope_parent, Map, Object, PersistentScope,
-  PersistentVector, Symbol, Value, Vector,
+  new_external_function, new_map, new_persistent_list_from, new_persistent_vector_from, new_string,
+  new_symbol, new_vector, nil_value, scope_get, scope_get_mut, scope_parent, Map, Object,
+  PersistentScope, PersistentVector, Symbol, Value, Vector,
 };
 
 use super::{dylib_loader_lisp_fn, file_loader_lisp_fn, get_scope_root, load};
@@ -103,9 +103,6 @@ pub fn import(
   scope: &Gc<Object<PersistentScope>>,
   args: &Gc<Object<PersistentVector>>,
 ) -> Gc<dyn Value> {
-  let caller_scope = scope_parent(scope)
-    .expect("failed to get caller scope")
-    .clone();
   let parent_module = scope_get(scope, "module")
     .expect("module is not defined in the current PersistentScope")
     .downcast_ref::<Object<Map>>()
@@ -117,6 +114,7 @@ pub fn import(
     .downcast_ref::<Object<String>>()
     .expect("filed to downcast filename to String")
     .clone();
+  let new_args = args.pop_back();
 
   let root_scope = get_scope_root(scope);
   let mut module = load(root_scope, parent_module, filename.clone())
@@ -128,10 +126,14 @@ pub fn import(
     .downcast_mut::<Object<Map>>()
     .expect("Failed to downcast exports to Map");
 
-  for import_name_value in args.iter() {
+  let mut list = LinkedList::new();
+
+  list.push_back(new_symbol(scope, "do").into_value());
+
+  for import_name_value in new_args.iter() {
     let import_name = import_name_value
       .downcast_ref::<Object<Symbol>>()
-      .expect("failed to downcast import_name to Symbol");
+      .expect(format!("failed to downcast {:?} to Symbol", import_name_value).as_str());
     let import_value = exports
       .get(&new_string(scope, import_name.value().deref()).into_value())
       .expect(&format!(
@@ -140,10 +142,17 @@ pub fn import(
         filename.value()
       ))
       .clone();
-    caller_scope.set(import_name.value().deref(), import_value);
+
+    let mut deflist = LinkedList::new();
+
+    deflist.push_back(new_symbol(scope, "def").into_value());
+    deflist.push_back(import_name_value.clone());
+    deflist.push_back(import_value);
+
+    list.push_back(new_persistent_list_from(scope, deflist.into()).into_value());
   }
 
-  nil_value(scope).clone().into_value()
+  new_persistent_list_from(scope, list.into()).into_value()
 }
 
 #[inline]
@@ -151,13 +160,14 @@ pub fn export(
   scope: &Gc<Object<PersistentScope>>,
   args: &Gc<Object<PersistentVector>>,
 ) -> Gc<dyn Value> {
-  let module_value =
-    scope_get_mut(scope, "module").expect("module is not defined in the current PersistentScope");
+  let caller_scope = scope_parent(scope).expect("failed to get caller scope");
+  let module_value = scope_get_mut(caller_scope, "module")
+    .expect("module is not defined in the current PersistentScope");
   let module = module_value
     .downcast_mut::<Object<Map>>()
     .expect("Failed to downcast module to PersistentScope");
   let exports_value = module
-    .get_mut(&new_string(scope, "exports").into_value())
+    .get_mut(&new_string(caller_scope, "exports").into_value())
     .expect("exports not defined on module");
   let exports = exports_value
     .downcast_mut::<Object<Map>>()
@@ -167,11 +177,11 @@ pub fn export(
     let export_name = export_name_value
       .downcast_ref::<Object<Symbol>>()
       .expect("failed to downcast import_name to Symbol");
-    let export_value = scope_get(scope, export_name.value().deref())
-      .expect("no such value defined")
+    let export_value = scope_get(caller_scope, export_name.value().deref())
+      .expect(format!("no such value defined {:?}", export_name_value).as_str())
       .clone();
     exports.set(
-      new_string(scope, export_name.value().deref()).into_value(),
+      new_string(caller_scope, export_name.value().deref()).into_value(),
       export_value,
     );
   }

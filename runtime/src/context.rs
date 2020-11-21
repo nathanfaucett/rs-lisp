@@ -13,10 +13,10 @@ pub fn new_context() -> Gc<Object<PersistentScope>> {
   unsafe {
     let mut scope = init_root_scope();
 
-    scope = init_nil(&scope);
+    scope = init_nil_kind(&scope);
     scope = init_bool_kind(&scope);
-    scope = init_char(&scope);
-    scope = init_string(&scope);
+    scope = init_char_kind(&scope);
+    scope = init_string_kind(&scope);
     scope = init_numbers_kind(&scope);
     scope = Symbol::init_kind(&scope);
     scope = Keyword::init_kind(&scope);
@@ -77,14 +77,14 @@ fn global_error_handler(
 #[inline]
 unsafe fn init_root_scope() -> Gc<Object<PersistentScope>> {
   let mut scope: Gc<Object<PersistentScope>> = Gc::null();
-  let mut gc_allocator = GcAllocator::unsafe_new();
+  let mut gc_allocator = GcAllocator::new();
   let mut persistent_scope = PersistentScope::default();
 
-  let kind_kind = gc_allocator.maintain(Kind::new_kind_kind());
+  let kind_kind = gc_allocator.unsafe_maintain(Kind::new_kind_kind());
 
   persistent_scope = persistent_scope.set("Kind", kind_kind.clone().into_value());
 
-  let persistent_scope_kind = gc_allocator.alloc(Kind::new_kind_object::<PersistentScope>(
+  let persistent_scope_kind = gc_allocator.unsafe_alloc(Kind::new_kind_object::<PersistentScope>(
     kind_kind.clone(),
     "PersistentScope",
   ));
@@ -94,14 +94,14 @@ unsafe fn init_root_scope() -> Gc<Object<PersistentScope>> {
     persistent_scope_kind.clone().into_value(),
   );
 
-  let gc_allocator_kind = gc_allocator.alloc(Kind::new_kind_object::<GcAllocator>(
+  let gc_allocator_kind = gc_allocator.unsafe_alloc(Kind::new_kind_object::<GcAllocator>(
     kind_kind,
     "GcAllocator",
   ));
 
   persistent_scope = persistent_scope.set("GcAllocator", gc_allocator_kind.clone().into_value());
 
-  let mut gc_allocator_object = Gc::new(Object::new(gc_allocator_kind.clone(), gc_allocator));
+  let gc_allocator_object = Gc::new(Object::new(gc_allocator_kind.clone(), gc_allocator));
 
   persistent_scope = persistent_scope.set(
     "default_gc_allocator",
@@ -109,13 +109,12 @@ unsafe fn init_root_scope() -> Gc<Object<PersistentScope>> {
   );
 
   scope.set_from_value(Object::new(persistent_scope_kind.clone(), persistent_scope));
-  gc_allocator_object.unsafe_set_scope(scope.clone());
 
   scope
 }
 
 #[inline]
-fn init_nil(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+fn init_nil_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
   let nil_kind = new_kind::<()>(&scope, "Nil");
   let nil_value = new_object(&scope, Object::new(nil_kind.clone(), ()));
 
@@ -124,13 +123,13 @@ fn init_nil(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> 
 }
 
 #[inline]
-fn init_char(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+fn init_char_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
   let character_kind = new_kind::<char>(&scope, "Char");
   scope_set(&scope, "Char", character_kind.into_value())
 }
 
 #[inline]
-fn init_string(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+fn init_string_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
   let string_kind = new_kind::<String>(&scope, "String");
   scope_set(&scope, "String", string_kind.into_value())
 }

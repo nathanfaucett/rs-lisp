@@ -159,7 +159,7 @@ where
   }
   #[inline(always)]
   fn trace(&mut self, marked: bool) {
-    if self.is_marked() != marked {
+    if self.marked != marked {
       self.marked = marked;
       self.kind.trace(marked);
       self.value.trace(marked);
@@ -243,5 +243,5 @@ where
 {
   scope_get_mut_with_kind::<GcAllocator>(scope, "default_gc_allocator")
     .expect("failed to get default_gc_allocator")
-    .alloc(object)
+    .alloc(scope, object)
 }

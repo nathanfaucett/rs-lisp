@@ -14,7 +14,7 @@ use super::{
 };
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Map(HashMap<Gc<dyn Value>, Gc<dyn Value>>);
+pub struct Map(pub HashMap<Gc<dyn Value>, Gc<dyn Value>>);
 
 impl PartialOrd for Map {
   #[inline]

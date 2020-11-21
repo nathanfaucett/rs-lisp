@@ -10,13 +10,12 @@ use gc::Gc;
 use gc::Trace;
 
 use super::{
-  add_external_function, new_usize, scope_get_with_kind, Kind, Object, PersistentScope,
-  PersistentVector, Value,
+  add_external_function, get_scope_root, new_usize, scope_get_with_kind, Kind, Object,
+  PersistentScope, PersistentVector, Value,
 };
 
 #[derive(Clone, PartialEq, PartialOrd, Eq)]
 pub struct GcAllocator {
-  scope: Gc<Object<PersistentScope>>,
   size: usize,
   max_size: usize,
   values: Vec<Gc<dyn Value>>,
@@ -54,9 +53,8 @@ impl Trace for GcAllocator {}
 
 impl GcAllocator {
   #[inline]
-  pub fn new(scope: Gc<Object<PersistentScope>>) -> Self {
+  pub fn new() -> Self {
     GcAllocator {
-      scope: scope.clone(),
       size: 0,
       max_size: 1024 * 1024,
       values: Vec::new(),
@@ -64,63 +62,93 @@ impl GcAllocator {
   }
 
   #[inline]
-  pub unsafe fn unsafe_new() -> Self {
-    Self::new(Gc::null())
-  }
-
-  #[inline]
-  pub(crate) unsafe fn unsafe_set_scope(
+  pub unsafe fn maintain_value(
     &mut self,
-    scope: Gc<Object<PersistentScope>>,
+    scope: &Gc<Object<PersistentScope>>,
+    value: Gc<dyn Value>,
   ) -> &mut Self {
-    self.scope = scope;
-    self
-  }
-
-  #[inline]
-  pub unsafe fn maintain_value(&mut self, value: Gc<dyn Value>) -> &mut Self {
-    self.size += value.kind().size();
-    self.values.push(value);
+    self.unsafe_maintain_value(value);
 
     if self.size > self.max_size {
-      self.collect();
+      self.collect(scope);
     }
 
     self
   }
 
   #[inline]
-  pub unsafe fn maintain<T>(&mut self, object: Gc<Object<T>>) -> Gc<Object<T>>
+  pub unsafe fn unsafe_maintain_value(&mut self, value: Gc<dyn Value>) -> &mut Self {
+    self.size += value.kind().size();
+    self.values.push(value);
+    self
+  }
+
+  #[inline]
+  pub unsafe fn maintain<T>(
+    &mut self,
+    scope: &Gc<Object<PersistentScope>>,
+    object: Gc<Object<T>>,
+  ) -> Gc<Object<T>>
   where
     T: PartialEq + PartialOrd + Hash + Debug + Trace + 'static,
   {
-    self.maintain_value(object.clone().into_value());
+    self.maintain_value(scope, object.clone().into_value());
+    object
+  }
+
+  #[inline]
+  pub unsafe fn unsafe_maintain<T>(&mut self, object: Gc<Object<T>>) -> Gc<Object<T>>
+  where
+    T: PartialEq + PartialOrd + Hash + Debug + Trace + 'static,
+  {
+    self.unsafe_maintain_value(object.clone().into_value());
     object
   }
 
   #[inline(always)]
-  pub fn alloc<T>(&mut self, object: Object<T>) -> Gc<Object<T>>
+  pub fn alloc<T>(
+    &mut self,
+    scope: &Gc<Object<PersistentScope>>,
+    object: Object<T>,
+  ) -> Gc<Object<T>>
   where
     T: PartialEq + PartialOrd + Hash + Debug + Trace + 'static,
   {
     unsafe {
       let object = Gc::new(object);
-      self.maintain(object.clone());
+      self.maintain(scope, object.clone());
       object
     }
   }
 
   #[inline(always)]
-  pub fn alloc_object<T>(&mut self, kind: Gc<Object<Kind>>, value: T) -> Gc<Object<T>>
+  pub fn unsafe_alloc<T>(&mut self, object: Object<T>) -> Gc<Object<T>>
   where
     T: PartialEq + PartialOrd + Hash + Debug + Trace + 'static,
   {
-    self.alloc(Object::new(kind, value))
+    unsafe {
+      let object = Gc::new(object);
+      self.unsafe_maintain(object.clone());
+      object
+    }
   }
 
   #[inline(always)]
-  pub fn collect(&mut self) -> usize {
-    self.scope.trace(true);
+  pub fn alloc_object<T>(
+    &mut self,
+    scope: &Gc<Object<PersistentScope>>,
+    kind: Gc<Object<Kind>>,
+    value: T,
+  ) -> Gc<Object<T>>
+  where
+    T: PartialEq + PartialOrd + Hash + Debug + Trace + 'static,
+  {
+    self.alloc(scope, Object::new(kind, value))
+  }
+
+  #[inline(always)]
+  pub fn collect(&mut self, scope: &Gc<Object<PersistentScope>>) -> usize {
+    get_scope_root(scope).clone().trace(true);
 
     let mut size = 0;
     let mut removed = LinkedList::new();
@@ -150,6 +178,11 @@ impl GcAllocator {
   }
 
   #[inline]
+  pub fn size(&self) -> usize {
+    self.size
+  }
+
+  #[inline]
   pub(crate) fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
     add_external_function(
       scope,
@@ -172,7 +205,7 @@ pub fn gc_allocator_collect(
     .expect("Failed to downcast to GcAllocator")
     .clone();
 
-  new_usize(scope, gc_allocator.collect()).into_value()
+  new_usize(scope, gc_allocator.collect(scope)).into_value()
 }
 
 #[inline]
