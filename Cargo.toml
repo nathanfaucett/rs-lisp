@@ -21,7 +21,7 @@ name = "lisp"
 path = "src/main.rs"
 
 [dependencies]
-libloading = "0.5"
+libloading = "0.6"
 clap = { version = "2.33", features = ["yaml"] }
 lisp-gc = { version = "0.1", path = "./gc" }
 lisp-runtime = { version = "0.1", path = "./runtime" }

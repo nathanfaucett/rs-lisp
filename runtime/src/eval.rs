@@ -6,13 +6,13 @@ use core::ops::Deref;
 use gc::Gc;
 
 use super::{
-  escape_kind, expand_special_form, function_kind, macro_kind, new_keyword, new_linked_map,
-  new_persistent_list_from, new_persistent_map, new_persistent_map_from, new_persistent_vector,
-  new_persistent_vector_from, new_scope, new_symbol, nil_value, persistent_list_kind,
-  persistent_map_kind, persistent_vector_kind, read_value, scope_get, scope_set, special_form_kind,
-  symbol_kind, Escape, EvalState, Function, FunctionKind, LinkedMap, Object, PersistentList,
-  PersistentMap, PersistentScope, PersistentVector, PopResult, Reader, SpecialForm, Stack, Symbol,
-  Value,
+  escape_kind, expand_special_form, function_kind, get_stack, macro_kind, new_keyword,
+  new_linked_map, new_persistent_list_from, new_persistent_map, new_persistent_map_from,
+  new_persistent_vector, new_persistent_vector_from, new_scope, new_symbol, nil_value,
+  persistent_list_kind, persistent_map_kind, persistent_vector_kind, read_value, scope_get,
+  scope_set, special_form_kind, symbol_kind, Escape, EvalState, Function, FunctionKind, LinkedMap,
+  Object, PersistentList, PersistentMap, PersistentScope, PersistentVector, PopResult, Reader,
+  SpecialForm, Stack, Symbol, Value,
 };
 
 #[inline]
@@ -41,7 +41,7 @@ pub fn eval(
   scope: &Gc<Object<PersistentScope>>,
   value: Gc<dyn Value>,
 ) -> (Gc<Object<PersistentScope>>, Gc<dyn Value>) {
-  let mut stack = Stack::new();
+  let mut stack = get_stack(scope).clone();
 
   stack.push_scope_and_value(scope.clone(), value);
 
@@ -76,7 +76,7 @@ fn eval_raw(
   scope: &Gc<Object<PersistentScope>>,
   value: Gc<dyn Value>,
 ) -> (Gc<Object<PersistentScope>>, Gc<dyn Value>) {
-  let mut stack = Stack::new();
+  let mut stack = get_stack(scope).clone();
 
   stack.push_scope_and_value(scope.clone(), value);
 

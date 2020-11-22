@@ -9,42 +9,35 @@ use runtime::{
 
 use super::{loader, new_module, DyLib};
 
-pub struct Lisp {
-  scope: Gc<Object<PersistentScope>>,
+pub fn new() -> Gc<Object<PersistentScope>> {
+  let mut scope = new_context();
+
+  scope = DyLib::init_kind(&scope);
+  scope = DyLib::init_scope(&scope);
+
+  scope = add_external_function(&scope, "println", vec!["...args"], println);
+
+  scope
 }
 
-impl Lisp {
-  #[inline]
-  pub fn new() -> Self {
-    let mut scope = new_context();
-
-    scope = DyLib::init_kind(&scope);
-    scope = DyLib::init_scope(&scope);
-
-    scope = add_external_function(&scope, "println", vec!["...args"], println);
-
-    Lisp { scope }
-  }
-
-  #[inline]
-  pub fn run(&self, filename_path: &Path) {
-    let mut module = new_module(&self.scope, None);
-    module.set(
-      new_string(&self.scope, "dirname").into_value(),
-      new_string(&self.scope, ".").into_value(),
-    );
-    loader::load(
-      &self.scope,
-      module,
-      new_string(
-        &self.scope,
-        filename_path
-          .to_str()
-          .expect("failed to move Path to string"),
-      ),
-    )
-    .expect(&format!("failed to load module {:?}", filename_path));
-  }
+#[inline]
+pub fn run_path(scope: &Gc<Object<PersistentScope>>, filename_path: &Path) {
+  let mut module = new_module(scope, None);
+  module.set(
+    new_string(scope, "dirname").into_value(),
+    new_string(scope, ".").into_value(),
+  );
+  loader::load(
+    scope,
+    module,
+    new_string(
+      scope,
+      filename_path
+        .to_str()
+        .expect("failed to move Path to string"),
+    ),
+  )
+  .expect(&format!("failed to load module {:?}", filename_path));
 }
 
 #[inline]

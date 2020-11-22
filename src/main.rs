@@ -19,8 +19,9 @@ fn main() {
   )
   .get_matches();
 
-  let lisp = lisp::Lisp::new();
-  lisp.run(
+  let scope = lisp::new();
+  lisp::run_path(
+    &scope,
     &canonicalize(matches.value_of("INPUT").expect("No input file given"))
       .expect("Failed to canonicalize input file"),
   );

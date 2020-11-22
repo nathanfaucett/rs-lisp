@@ -148,7 +148,9 @@ impl GcAllocator {
 
   #[inline(always)]
   pub fn collect(&mut self, scope: &Gc<Object<PersistentScope>>) -> usize {
-    get_scope_root(scope).clone().trace(true);
+    let mut root_scope = get_scope_root(scope).clone();
+
+    root_scope.trace(true);
 
     let mut size = 0;
     let mut removed = LinkedList::new();
@@ -204,7 +206,8 @@ pub fn gc_allocator_collect(
     .downcast_ref::<Object<GcAllocator>>()
     .expect("Failed to downcast to GcAllocator")
     .clone();
-  new_usize(scope, gc_allocator.collect(scope)).into_value()
+  let collected_bytes = gc_allocator.collect(scope);
+  new_usize(scope, collected_bytes).into_value()
 }
 
 #[inline]

@@ -1,11 +1,14 @@
 use alloc::collections::LinkedList;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use core::{fmt, ptr};
+use core::ptr;
 
 use gc::{Gc, Trace};
 
-use super::{Function, Object, PersistentScope, Value};
+use super::{
+  new_kind, new_object, scope_get, scope_get_with_kind, scope_set, Function, Kind, Object,
+  PersistentScope, Value,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EvalState {
@@ -31,7 +34,7 @@ pub enum PopResult {
   Uncaught,
 }
 
-#[derive(Clone, Eq)]
+#[derive(Clone, Eq, Debug)]
 pub struct Stack {
   pub(crate) value: LinkedList<Gc<dyn Value>>,
   pub(crate) scope: LinkedList<Gc<Object<PersistentScope>>>,
@@ -39,12 +42,18 @@ pub struct Stack {
   pub(crate) state: LinkedList<EvalState>,
 }
 
-impl Trace for Stack {}
-
-impl fmt::Debug for Stack {
+impl Trace for Stack {
   #[inline]
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    f.write_str(":stack")
+  fn trace(&mut self, marked: bool) {
+    for v in self.value.iter_mut() {
+      v.trace(marked);
+    }
+    for v in self.scope.iter_mut() {
+      v.trace(marked);
+    }
+    for v in self.callable.iter_mut() {
+      v.trace(marked);
+    }
   }
 }
 
@@ -124,4 +133,28 @@ impl Stack {
     self.state.push_front(EvalState::Eval);
     self
   }
+
+  #[inline]
+  pub(crate) fn init_kind(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let stack_kind = new_kind::<Stack>(scope, "Stack");
+    scope_set(scope, "Stack", stack_kind.into_value())
+  }
+
+  #[inline]
+  pub fn init_scope(scope: &Gc<Object<PersistentScope>>) -> Gc<Object<PersistentScope>> {
+    let stack = new_object(scope, Object::new(stack_kind(scope).clone(), Stack::new()));
+    scope_set(&scope, "__stack", stack.into_value())
+  }
+}
+
+#[inline]
+pub fn stack_kind(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Kind>> {
+  scope_get_with_kind::<Kind>(scope, "Stack").expect("failed to get Stack Kind")
+}
+
+pub fn get_stack(scope: &Gc<Object<PersistentScope>>) -> &Gc<Object<Stack>> {
+  scope_get(scope, "__stack")
+    .unwrap()
+    .downcast_ref::<Object<Stack>>()
+    .expect("failed to downcast __stack to Stack Object")
 }

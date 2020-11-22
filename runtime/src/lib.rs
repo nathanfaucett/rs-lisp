@@ -1,4 +1,4 @@
-//#![no_std]
+#![no_std]
 #![feature(arbitrary_self_types)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
@@ -12,8 +12,7 @@ extern crate serde_derive;
 
 extern crate lisp_gc as gc;
 
-extern crate core;
-
+mod atom;
 mod boolean;
 mod context;
 mod escape;
@@ -42,6 +41,7 @@ mod symbol;
 mod value;
 mod vector;
 
+pub use self::atom::*;
 pub use self::boolean::*;
 pub use self::context::*;
 pub use self::escape::*;

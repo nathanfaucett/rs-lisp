@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::ptr;
 
 use gc::{Gc, Trace};
-use libloading::{Library, Result, Symbol};
+use libloading::{Error, Library, Symbol};
 use runtime::{
   add_external_function, new_kind, new_object, scope_get_with_kind, scope_set, Keyword, Kind,
   Object, PersistentScope, PersistentVector, Value,
@@ -65,7 +65,7 @@ impl DyLib {
   }
 
   #[inline]
-  pub unsafe fn get<'a, T>(&'a self, symbol: &str) -> Result<Symbol<'a, T>> {
+  pub unsafe fn get<'a, T>(&'a self, symbol: &str) -> Result<Symbol<'a, T>, Error> {
     self.library.get::<T>(symbol.as_bytes())
   }
 
@@ -75,7 +75,7 @@ impl DyLib {
     name: &str,
     scope: &Gc<Object<PersistentScope>>,
     args: &Gc<Object<PersistentVector>>,
-  ) -> Result<Gc<dyn Value>> {
+  ) -> Result<Gc<dyn Value>, Error> {
     let func = self.get::<DyLibFunction>(name)?;
     Ok(func(scope, args))
   }

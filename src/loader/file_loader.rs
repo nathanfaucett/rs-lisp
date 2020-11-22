@@ -4,7 +4,7 @@ use std::path::Path;
 use gc::Gc;
 use runtime::{
   add_external_macro, get_scope_root, new_map, new_scope, new_string, nil_value, scope_set, Map,
-  Object, PersistentScope, PersistentVector, Value,
+  Object, PersistentScope, PersistentVector, Stack, Value,
 };
 
 use super::super::{export, import, new_module, run_in_scope};
@@ -71,7 +71,7 @@ pub fn file_loader(
       )
     } else {
       let mut module = new_module(scope, Some(parent_module.clone()));
-      let mut module_scope = new_scope(get_scope_root(scope));
+      let mut module_scope = Stack::init_scope(&new_scope(get_scope_root(scope)));
 
       cache.set(path_value.clone(), module.clone().into_value());
 

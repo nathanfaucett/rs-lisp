@@ -9,7 +9,7 @@ use gc::{Gc, Trace};
 use super::{
   eval, new_kind, new_object, new_persistent_list_from, new_persistent_vector_from, new_symbol,
   scope_get_with_kind, scope_set, FunctionKind, Kind, Object, PersistentList, PersistentScope,
-  PersistentVector, Symbol, Value,
+  PersistentVector, Stack, Symbol, Value,
 };
 
 #[derive(Eq)]
@@ -264,7 +264,7 @@ pub fn call_function(
   let mut persistent_list = arguments.value().iter().collect::<PersistentList>();
   persistent_list = persistent_list.push_front(callable.into_value());
   eval(
-    scope,
+    &Stack::init_scope(scope),
     new_persistent_list_from(scope, persistent_list).into_value(),
   )
 }
