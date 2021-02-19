@@ -10,19 +10,19 @@ const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 fn main() {
-  let matches = clap_app!(app =>
-      (name: NAME)
-      (version: VERSION)
-      (author: AUTHORS)
-      (about: DESCRIPTION)
-      (@arg INPUT: +required "Sets the input file to use")
-  )
-  .get_matches();
+    let matches = clap_app!(app =>
+        (name: NAME)
+        (version: VERSION)
+        (author: AUTHORS)
+        (about: DESCRIPTION)
+        (@arg INPUT: +required "Sets the input file to use")
+    )
+    .get_matches();
 
-  let scope = lisp::new();
-  lisp::run_path(
-    &scope,
-    &canonicalize(matches.value_of("INPUT").expect("No input file given"))
-      .expect("Failed to canonicalize input file"),
-  );
+    let scope = lisp::new();
+    lisp::run_path(
+        &scope,
+        &canonicalize(matches.value_of("INPUT").expect("No input file given"))
+            .expect("Failed to canonicalize input file"),
+    );
 }

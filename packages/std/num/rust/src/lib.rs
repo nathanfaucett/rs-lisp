@@ -1,13 +1,13 @@
 extern crate lisp;
 
 use lisp::gc::Gc;
-use lisp::runtime::{self, List, Object, PersistentScope, Value};
+use lisp::runtime::{self, List, Object, Scope, Value};
 
 macro_rules! mul {
   ($name:ident, $right_kind:ty, $left_kind:ty) => {
     fn mul_isize_isize(
-      scope: &Gc<Object<PersistentScope>>,
-      args: &Gc<Object<PersistentVector>>,
+      scope: &Gc<Object<Scope>>,
+      args: &Gc<Object<Vector>>,
     ) -> Gc<dyn Value> {
       let a = args
         .pop_front()

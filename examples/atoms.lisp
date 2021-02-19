@@ -12,15 +12,15 @@
   (atom.update counter (fn [count] (isize.sub count 1)))
 ))
 
-(println counter)
+(println "default", counter)
 
 (counter-inc)
 (counter-inc)
 (counter-inc)
 
-(println counter)
+(println "inc 3", counter)
 
 (counter-dec)
 (counter-dec)
 
-(println counter)
+(println "dec 2", counter)

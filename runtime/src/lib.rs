@@ -1,7 +1,9 @@
-#![no_std]
+// #![no_std]
 #![feature(arbitrary_self_types)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
+
+extern crate core;
 
 #[macro_use]
 extern crate alloc;
@@ -22,18 +24,13 @@ mod function_kind;
 mod gc_allocator;
 mod keyword;
 mod kind;
-mod linked_map;
 mod lisp_map;
 mod list;
 mod map;
 mod numbers;
 mod object;
-mod persistent_list;
-mod persistent_map;
-mod persistent_scope;
-mod persistent_set;
-mod persistent_vector;
 mod reader;
+mod scope;
 mod set;
 mod special_form;
 mod stack;
@@ -51,18 +48,13 @@ pub use self::function_kind::*;
 pub use self::gc_allocator::*;
 pub use self::keyword::*;
 pub use self::kind::*;
-pub use self::linked_map::*;
 pub use self::lisp_map::*;
 pub use self::list::*;
 pub use self::map::*;
 pub use self::numbers::*;
 pub use self::object::*;
-pub use self::persistent_list::*;
-pub use self::persistent_map::*;
-pub use self::persistent_scope::*;
-pub use self::persistent_set::*;
-pub use self::persistent_vector::*;
 pub use self::reader::*;
+pub use self::scope::*;
 pub use self::set::*;
 pub use self::special_form::*;
 pub use self::stack::*;

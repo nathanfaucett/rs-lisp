@@ -1,5 +1,5 @@
 (def throw_error (fn throw_error []
-  (throw "Error")
+  (throw "Throw me!")
 ))
 
 (throw_error)
