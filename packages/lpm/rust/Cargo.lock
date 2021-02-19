@@ -121,7 +121,7 @@ checksum = "d515b1f41455adea1313a4a2ac8a8a477634fbae63cc6100e3aebb207ce61558"
 [[package]]
 name = "lisp"
 version = "0.1.0"
-source = "git+https://gitlab.com/nathanfaucett/rs-lisp#23d71951fca87cde9f379d9da35fdf6fb640500a"
+source = "git+https://github.com/nathanfaucett/rs-lisp#23d71951fca87cde9f379d9da35fdf6fb640500a"
 dependencies = [
  "clap",
  "lisp-gc",
@@ -131,12 +131,12 @@ dependencies = [
 [[package]]
 name = "lisp-gc"
 version = "0.1.0"
-source = "git+https://gitlab.com/nathanfaucett/rs-lisp#23d71951fca87cde9f379d9da35fdf6fb640500a"
+source = "git+https://github.com/nathanfaucett/rs-lisp#23d71951fca87cde9f379d9da35fdf6fb640500a"
 
 [[package]]
 name = "lisp-runtime"
 version = "0.1.0"
-source = "git+https://gitlab.com/nathanfaucett/rs-lisp#23d71951fca87cde9f379d9da35fdf6fb640500a"
+source = "git+https://github.com/nathanfaucett/rs-lisp#23d71951fca87cde9f379d9da35fdf6fb640500a"
 dependencies = [
  "hashbrown",
  "lisp-gc",
