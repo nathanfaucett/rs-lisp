@@ -5,7 +5,9 @@ use core::hash::{Hash, Hasher};
 
 use gc::Gc;
 
-use super::{add_external_function, new_bool, nil_value, Kind, Map, Object, Scope, Vector};
+use super::{
+    add_external_function, false_value, new_bool, nil_value, Kind, Map, Object, Scope, Vector,
+};
 
 pub trait Value: Any {
     fn kind(&self) -> Gc<Object<Kind>>;
@@ -57,6 +59,7 @@ impl dyn Value {
         add_external_function(scope, ">=", vec!["a", "b"], value_ge);
         add_external_function(scope, "<", vec!["a", "b"], value_lt);
         add_external_function(scope, "<=", vec!["a", "b"], value_le);
+        add_external_function(scope, "!", vec!["a", "b"], value_not);
     }
 }
 
@@ -142,6 +145,16 @@ pub fn value_le(scope: &Gc<Object<Scope>>, args: &Gc<Object<Vector>>) -> Gc<dyn 
         .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
     new_bool(scope, a <= b).into_value()
+}
+
+#[inline]
+pub fn value_not(scope: &Gc<Object<Scope>>, args: &Gc<Object<Vector>>) -> Gc<dyn Value> {
+    let value = args
+        .get(0)
+        .and_then(|value| value.downcast_ref::<Object<bool>>().map(Clone::clone))
+        .unwrap_or_else(|| false_value(scope).clone());
+
+    new_bool(scope, !value.value()).into_value()
 }
 
 impl PartialOrd for dyn Value {
