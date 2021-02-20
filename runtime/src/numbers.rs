@@ -219,7 +219,7 @@ binary!(isize_eq, isize, eq, new_bool);
 // binary!(f64_eq, f64, eq, new_bool);
 
 #[inline]
-pub fn i8_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn i8_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "I8").expect("failed to get I8 Kind")
 }
 #[inline]
@@ -228,7 +228,7 @@ pub fn new_i8(scope: &Gc<Object<Scope>>, value: i8) -> Gc<Object<i8>> {
 }
 
 #[inline]
-pub fn i16_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn i16_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "I6").expect("failed to get I16 Kind")
 }
 #[inline]
@@ -237,7 +237,7 @@ pub fn new_i16(scope: &Gc<Object<Scope>>, value: i16) -> Gc<Object<i16>> {
 }
 
 #[inline]
-pub fn i32_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn i32_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "I32").expect("failed to get I32 Kind")
 }
 #[inline]
@@ -246,7 +246,7 @@ pub fn new_i32(scope: &Gc<Object<Scope>>, value: i32) -> Gc<Object<i32>> {
 }
 
 #[inline]
-pub fn i64_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn i64_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "I64").expect("failed to get I64 Kind")
 }
 #[inline]
@@ -255,7 +255,7 @@ pub fn new_i64(scope: &Gc<Object<Scope>>, value: i64) -> Gc<Object<i64>> {
 }
 
 #[inline]
-pub fn isize_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn isize_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "ISize").expect("failed to get ISize Kind")
 }
 #[inline]
@@ -264,7 +264,7 @@ pub fn new_isize(scope: &Gc<Object<Scope>>, value: isize) -> Gc<Object<isize>> {
 }
 
 #[inline]
-pub fn u8_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn u8_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "U8").expect("failed to get U8 Kind")
 }
 #[inline]
@@ -273,7 +273,7 @@ pub fn new_u8(scope: &Gc<Object<Scope>>, value: u8) -> Gc<Object<u8>> {
 }
 
 #[inline]
-pub fn u16_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn u16_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "U6").expect("failed to get U16 Kind")
 }
 #[inline]
@@ -282,7 +282,7 @@ pub fn new_u16(scope: &Gc<Object<Scope>>, value: u16) -> Gc<Object<u16>> {
 }
 
 #[inline]
-pub fn u32_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn u32_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "U32").expect("failed to get U32 Kind")
 }
 #[inline]
@@ -291,7 +291,7 @@ pub fn new_u32(scope: &Gc<Object<Scope>>, value: u32) -> Gc<Object<u32>> {
 }
 
 #[inline]
-pub fn u64_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn u64_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "U64").expect("failed to get U64 Kind")
 }
 #[inline]
@@ -300,7 +300,7 @@ pub fn new_u64(scope: &Gc<Object<Scope>>, value: u64) -> Gc<Object<u64>> {
 }
 
 #[inline]
-pub fn usize_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn usize_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "USize").expect("failed to get USize Kind")
 }
 #[inline]

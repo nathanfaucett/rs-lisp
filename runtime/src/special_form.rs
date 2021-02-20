@@ -404,7 +404,7 @@ pub fn try_special_form(_stack: &mut Stack) {
 }
 
 #[inline]
-pub fn special_form_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn special_form_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "SpecialForm").expect("failed to get SpecialForm Kind")
 }
 

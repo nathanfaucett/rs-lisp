@@ -5,7 +5,7 @@ use core::ops::{Deref, DerefMut};
 
 use gc::{Gc, Trace};
 
-use super::{scope_get_mut_with_kind, GcAllocator, Kind, Map, Scope, Value};
+use super::{scope_get_with_kind, GcAllocator, Kind, Map, Scope, Value};
 
 #[derive(Clone)]
 pub struct Object<T> {
@@ -89,13 +89,13 @@ where
     T: 'static + PartialEq + PartialOrd + Hash + Debug + Trace,
 {
     #[inline(always)]
-    fn kind(&self) -> &Gc<Object<Kind>> {
-        &self.kind
+    fn kind(&self) -> Gc<Object<Kind>> {
+        self.kind.clone()
     }
 
     #[inline(always)]
-    fn meta(&self) -> Option<&Gc<Object<Map>>> {
-        self.meta.as_ref()
+    fn meta(&self) -> Option<Gc<Object<Map>>> {
+        self.meta.as_ref().map(Clone::clone)
     }
 
     #[inline(always)]
@@ -229,7 +229,7 @@ pub fn new_object<T>(scope: &Gc<Object<Scope>>, object: Object<T>) -> Gc<Object<
 where
     T: PartialEq + PartialOrd + Hash + Debug + Trace + 'static,
 {
-    scope_get_mut_with_kind::<GcAllocator>(scope, "default_gc_allocator")
+    scope_get_with_kind::<GcAllocator>(scope, "default_gc_allocator")
         .expect("failed to get default_gc_allocator")
         .alloc(&mut scope.clone(), object)
 }

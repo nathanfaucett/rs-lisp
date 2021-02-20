@@ -34,16 +34,16 @@ pub fn bool_not(scope: &Gc<Object<Scope>>, args: &Gc<Object<Vector>>) -> Gc<dyn 
 }
 
 #[inline]
-pub fn bool_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn bool_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Bool").expect("failed to get Bool Kind")
 }
 
 #[inline]
-pub fn true_value(scope: &Gc<Object<Scope>>) -> &Gc<Object<bool>> {
+pub fn true_value(scope: &Gc<Object<Scope>>) -> Gc<Object<bool>> {
     scope_get_with_kind::<bool>(scope, "true").expect("failed to get true value")
 }
 #[inline]
-pub fn false_value(scope: &Gc<Object<Scope>>) -> &Gc<Object<bool>> {
+pub fn false_value(scope: &Gc<Object<Scope>>) -> Gc<Object<bool>> {
     scope_get_with_kind::<bool>(scope, "false").expect("failed to get false value")
 }
 

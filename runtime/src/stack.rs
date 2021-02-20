@@ -1,7 +1,7 @@
 use alloc::collections::LinkedList;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use core::ptr;
+use core::{fmt, ptr};
 
 use gc::{Gc, Trace};
 
@@ -34,12 +34,19 @@ pub enum PopResult {
     Uncaught,
 }
 
-#[derive(Clone, Eq, Debug)]
+#[derive(Clone, Eq)]
 pub struct Stack {
     pub(crate) value: LinkedList<Gc<dyn Value>>,
     pub(crate) scope: LinkedList<Gc<Object<Scope>>>,
     pub(crate) callable: LinkedList<Gc<Object<Function>>>,
     pub(crate) state: LinkedList<EvalState>,
+}
+
+impl fmt::Debug for Stack {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("").field(&"Stack").finish()
+    }
 }
 
 impl Trace for Stack {
@@ -144,13 +151,14 @@ impl Stack {
 }
 
 #[inline]
-pub fn stack_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn stack_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Stack").expect("failed to get Stack Kind")
 }
 
-pub fn get_stack(scope: &Gc<Object<Scope>>) -> &Gc<Object<Stack>> {
+pub fn get_stack(scope: &Gc<Object<Scope>>) -> Gc<Object<Stack>> {
     scope_get(scope, "__stack")
         .unwrap()
         .downcast_ref::<Object<Stack>>()
         .expect("failed to downcast __stack to Stack Object")
+        .clone()
 }

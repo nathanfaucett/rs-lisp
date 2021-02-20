@@ -3,7 +3,6 @@ use core::hash::{Hash, Hasher};
 use core::{fmt, mem, ptr};
 
 use gc::{Gc, Trace};
-use hashbrown::HashMap;
 
 use super::{
     add_external_function, new_object, new_string, new_usize, nil_value, scope_get_with_kind,
@@ -20,7 +19,7 @@ pub struct Kind {
 impl fmt::Debug for Kind {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut map = LispMap(HashMap::default());
+        let mut map = LispMap::default();
 
         map.0.insert("name", self.name.clone());
         map.0.insert("size", self.size.to_string());
@@ -146,7 +145,7 @@ pub fn kind_align(scope: &Gc<Object<Scope>>, args: &Gc<Object<Vector>>) -> Gc<dy
 }
 
 #[inline]
-pub fn kind_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn kind_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Kind").expect("failed to get Kind Kind")
 }
 #[inline]

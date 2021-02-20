@@ -230,7 +230,7 @@ pub fn list_push_back(_scope: &Gc<Object<Scope>>, args: &Gc<Object<Vector>>) -> 
 }
 
 #[inline]
-pub fn list_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn list_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "List").expect("failed to get List Kind")
 }
 

@@ -118,7 +118,7 @@ pub fn dylib_call(scope: &Gc<Object<Scope>>, args: &Gc<Object<Vector>>) -> Gc<dy
 }
 
 #[inline]
-pub fn dylib_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn dylib_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "DyLib").expect("failed to get DyLib Kind")
 }
 #[inline]

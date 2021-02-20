@@ -222,7 +222,7 @@ pub fn set_add(scope: &Gc<Object<Scope>>, args: &Gc<Object<Vector>>) -> Gc<dyn V
 }
 
 #[inline]
-pub fn set_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn set_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Set").expect("failed to get Set Kind")
 }
 #[inline]

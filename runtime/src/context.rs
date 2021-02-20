@@ -3,8 +3,9 @@ use hashbrown::HashMap;
 
 use super::{
     add_external_function, init_bool_kind, init_bool_scope, init_numbers_kind, init_numbers_scope,
-    new_kind, new_object, scope_get_with_kind, scope_set, Atom, Escape, Function, GcAllocator,
-    Keyword, Kind, List, Map, Object, Scope, Set, SpecialForm, Stack, Symbol, Value, Vector,
+    new_kind, new_object, run_in_scope, scope_get_with_kind, scope_set, Atom, Escape, Function,
+    GcAllocator, Keyword, Kind, List, Map, Object, Scope, Set, SpecialForm, Stack, Symbol, Value,
+    Vector,
 };
 use gc::Gc;
 
@@ -49,6 +50,8 @@ pub fn new_context() -> Gc<Object<Scope>> {
             vec!["error"],
             global_error_handler,
         );
+
+        run_in_scope(&scope, include_str!("lisp/bootstrap.lisp"));
 
         scope
     }
@@ -123,16 +126,16 @@ fn init_string_kind(scope: &Gc<Object<Scope>>) {
 }
 
 #[inline]
-pub fn nil_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn nil_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Nil").expect("failed to get Nil Kind")
 }
 #[inline]
-pub fn nil_value(scope: &Gc<Object<Scope>>) -> &Gc<Object<()>> {
+pub fn nil_value(scope: &Gc<Object<Scope>>) -> Gc<Object<()>> {
     scope_get_with_kind::<()>(scope, "nil").expect("failed to get nil value")
 }
 
 #[inline]
-pub fn char_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn char_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Char").expect("failed to get Char Kind")
 }
 #[inline]
@@ -141,7 +144,7 @@ pub fn new_char(scope: &Gc<Object<Scope>>, value: char) -> Gc<Object<char>> {
 }
 
 #[inline]
-pub fn string_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn string_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "String").expect("failed to get String Kind")
 }
 #[inline]

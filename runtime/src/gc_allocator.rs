@@ -199,6 +199,6 @@ pub fn gc_allocator_collect(
 }
 
 #[inline]
-pub fn gc_allocator_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn gc_allocator_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "GcAllocator").expect("failed to get GcAllocator Kind")
 }

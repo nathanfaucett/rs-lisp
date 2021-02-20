@@ -3,8 +3,7 @@ use std::{collections::LinkedList, ops::Deref};
 use gc::Gc;
 use runtime::{
     get_scope_root, new_external_function, new_list_from, new_map, new_string, new_symbol,
-    new_vector, nil_value, scope_get, scope_get_mut, scope_parent, Map, Object, Scope, Symbol,
-    Value, Vector,
+    new_vector, nil_value, scope_get, scope_parent, Map, Object, Scope, Symbol, Value, Vector,
 };
 
 use super::{dylib_loader_lisp_fn, file_loader_lisp_fn, load};
@@ -154,8 +153,8 @@ pub fn import(scope: &Gc<Object<Scope>>, args: &Gc<Object<Vector>>) -> Gc<dyn Va
 #[inline]
 pub fn export(scope: &Gc<Object<Scope>>, args: &Gc<Object<Vector>>) -> Gc<dyn Value> {
     let caller_scope = scope_parent(scope).expect("failed to get caller scope");
-    let module_value =
-        scope_get_mut(caller_scope, "module").expect("module is not defined in the current Scope");
+    let mut module_value =
+        scope_get(caller_scope, "module").expect("module is not defined in the current Scope");
     let module = module_value
         .downcast_mut::<Object<Map>>()
         .expect("Failed to downcast module to Scope");

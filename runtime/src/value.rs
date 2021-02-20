@@ -8,8 +8,8 @@ use gc::Gc;
 use super::{add_external_function, new_bool, nil_value, Kind, Map, Object, Scope, Vector};
 
 pub trait Value: Any {
-    fn kind(&self) -> &Gc<Object<Kind>>;
-    fn meta(&self) -> Option<&Gc<Object<Map>>>;
+    fn kind(&self) -> Gc<Object<Kind>>;
+    fn meta(&self) -> Option<Gc<Object<Map>>>;
     fn debug(&self, f: &mut fmt::Formatter) -> fmt::Result;
     fn compare(&self, other: &dyn Value) -> Option<Ordering>;
     fn hash(&self, hasher: &mut dyn Hasher);

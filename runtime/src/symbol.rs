@@ -65,7 +65,7 @@ impl Symbol {
 }
 
 #[inline]
-pub fn symbol_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn symbol_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Symbol").expect("failed to get Symbol Kind")
 }
 #[inline]

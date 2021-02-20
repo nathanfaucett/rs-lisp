@@ -116,7 +116,7 @@ impl Atom {
 }
 
 #[inline]
-pub fn atom_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn atom_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Atom").expect("failed to get Atom Kind")
 }
 

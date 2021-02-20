@@ -2,6 +2,7 @@ use core::fmt::{self, Write};
 
 use hashbrown::HashMap;
 
+#[derive(Default)]
 pub struct LispMap<K, V>(pub HashMap<K, V>);
 
 impl<K, V> fmt::Debug for LispMap<K, V>

@@ -67,7 +67,7 @@ impl Keyword {
 }
 
 #[inline]
-pub fn keyword_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn keyword_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Keyword").expect("failed to get Keyword Kind")
 }
 #[inline]

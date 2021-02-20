@@ -127,7 +127,7 @@ impl Function {
 }
 
 #[inline]
-pub fn function_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn function_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Function").expect("failed to get Function Kind")
 }
 #[inline]
@@ -190,7 +190,7 @@ pub fn add_external_function<F, N>(
 }
 
 #[inline]
-pub fn macro_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn macro_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Macro").expect("failed to get Macro Kind")
 }
 #[inline]

@@ -65,7 +65,7 @@ impl Escape {
 }
 
 #[inline]
-pub fn escape_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn escape_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Escape").expect("failed to get Escape Kind")
 }
 #[inline]

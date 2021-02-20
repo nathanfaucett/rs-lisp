@@ -635,3 +635,14 @@ fn eval_expand(stack: &mut Stack) {
         stack.value.push_front(evaluated_list.into_value());
     }
 }
+
+#[inline]
+pub fn run_in_scope<T>(scope: &Gc<Object<Scope>>, content: T) -> (Gc<Object<Scope>>, Gc<dyn Value>)
+where
+    T: ToString,
+{
+    let mut raw = content.to_string();
+    raw.push(')');
+    raw.insert_str(0, "(do ");
+    run(scope, raw)
+}

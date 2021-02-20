@@ -282,7 +282,7 @@ pub fn vector_insert(scope: &Gc<Object<Scope>>, args: &Gc<Object<Vector>>) -> Gc
 }
 
 #[inline]
-pub fn vector_kind(scope: &Gc<Object<Scope>>) -> &Gc<Object<Kind>> {
+pub fn vector_kind(scope: &Gc<Object<Scope>>) -> Gc<Object<Kind>> {
     scope_get_with_kind::<Kind>(scope, "Vector").expect("failed to get Vector Kind")
 }
 
