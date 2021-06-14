@@ -28,7 +28,7 @@ pub enum EvalState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum PopResult {
+pub enum UnwindResult {
     Caught(Gc<dyn Value>),
     Callable(Gc<Object<Function>>),
     Uncaught,
@@ -97,25 +97,29 @@ impl Stack {
     }
 
     #[inline]
-    pub(crate) fn pop(&mut self) -> PopResult {
-        match self.state.pop_front() {
-            Some(EvalState::Catch) => {
-                return PopResult::Caught(
-                    self.value
+    pub(crate) fn unwind(&mut self) -> UnwindResult {
+        loop {
+            match self.state.pop_front() {
+                Some(EvalState::Catch) => {
+                    return UnwindResult::Caught(
+                        self.value
+                            .pop_front()
+                            .expect("no function was passed to caught block"),
+                    );
+                }
+                Some(EvalState::PopScope) => {
+                    let callable = self
+                        .callable
                         .pop_front()
-                        .expect("no function was passed to caught block"),
-                );
+                        .expect("no function was in the stack")
+                        .downcast::<Object<Function>>()
+                        .expect("failed to downcast callable to function");
+                    return UnwindResult::Callable(callable);
+                }
+                None => return UnwindResult::Uncaught,
+                _ => {}
             }
-            Some(EvalState::CallFunction) => {
-                let callable = self
-                    .callable
-                    .pop_front()
-                    .expect("no function was in the stack");
-                return PopResult::Callable(callable);
-            }
-            _ => {}
         }
-        PopResult::Uncaught
     }
 
     #[inline]

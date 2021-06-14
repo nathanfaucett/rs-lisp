@@ -1,7 +1,3 @@
-(def atom.update (fn atom.update [atom, func]
-  (atom.set atom (func (atom.get atom)))
-))
-
 (def counter (atom.new 0_isize))
 
 (def counter-inc (fn counter-inc []

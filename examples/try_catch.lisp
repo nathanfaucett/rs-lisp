@@ -2,4 +2,9 @@
   (throw "Throw me!")
 ))
 
-(throw_error)
+(try 
+  (throw_error)
+  (fn [error]
+    (println error)
+  )
+)

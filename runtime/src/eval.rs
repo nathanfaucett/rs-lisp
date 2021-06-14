@@ -6,10 +6,10 @@ use gc::Gc;
 
 use super::{
     escape_kind, expand_special_form, function_kind, get_stack, list_kind, macro_kind, map_kind,
-    new_keyword, new_list, new_list_from, new_map, new_map_from, new_scope, new_symbol, new_vector,
+    new_keyword, new_list, new_list_from, new_map, new_scope, new_string, new_vector,
     new_vector_from, nil_value, read_value, scope_get, scope_set, special_form_kind, symbol_kind,
-    vector_kind, Escape, EvalState, Function, FunctionKind, List, Map, Object, PopResult, Reader,
-    Scope, SpecialForm, Stack, Symbol, Value, Vector,
+    vector_kind, Escape, EvalState, Function, FunctionKind, List, Map, Object, Reader, Scope,
+    SpecialForm, Stack, Symbol, UnwindResult, Value, Vector,
 };
 
 #[inline]
@@ -48,7 +48,7 @@ pub fn eval(scope: &Gc<Object<Scope>>, value: Gc<dyn Value>) -> (Gc<Object<Scope
                 EvalState::PopValue => eval_pop_value(&mut stack),
                 EvalState::PopScope => eval_pop_scope(&mut stack),
                 EvalState::Throw => eval_throw(&mut stack),
-                EvalState::Catch => eval_catch(&mut stack),
+                EvalState::Catch => panic!("invalid state Catch"),
                 EvalState::If => eval_if(&mut stack),
                 EvalState::Def => eval_def(&mut stack),
                 EvalState::Expand => eval_expand(&mut stack),
@@ -80,7 +80,7 @@ fn eval_raw(scope: &Gc<Object<Scope>>, value: Gc<dyn Value>) -> (Gc<Object<Scope
                 EvalState::PopValue => eval_pop_value(&mut stack),
                 EvalState::PopScope => eval_pop_scope(&mut stack),
                 EvalState::Throw => eval_throw(&mut stack),
-                EvalState::Catch => eval_catch(&mut stack),
+                EvalState::Catch => panic!("invalid state Catch"),
                 EvalState::If => eval_if(&mut stack),
                 EvalState::Def => eval_def(&mut stack),
                 EvalState::Expand => eval_expand(&mut stack),
@@ -487,47 +487,42 @@ fn eval_throw(stack: &mut Stack) {
         .pop_front()
         .unwrap_or_else(|| nil_value(&scope).clone().into_value());
 
-    let mut error = Map::new();
-    let mut stack_trace = Vector::new();
-
-    loop {
-        match stack.pop() {
-            PopResult::Callable(callable) => {
-                stack_trace.push(
-                    callable
-                        .name()
-                        .map(Clone::clone)
-                        .unwrap_or_else(|| new_symbol(&scope, "anonymous"))
-                        .into_value(),
-                );
-            }
-            PopResult::Caught(value) => {
-                stack.state.push_front(EvalState::Catch);
-                stack.state.push_front(EvalState::Eval);
-                stack.value.push_front(value);
-            }
-            PopResult::Uncaught => {
-                break;
-            }
-        }
-    }
+    let mut error = new_map(&scope);
+    let mut stack_trace = new_vector(&scope);
 
     error.set(new_keyword(&scope, "value").into_value(), error_value);
     error.set(
         new_keyword(&scope, "stack_trace").into_value(),
-        new_vector_from(&scope, stack_trace).into_value(),
+        stack_trace.clone().into_value(),
     );
 
-    panic!(
-        "Uncaught Error: {:?}",
-        new_map_from(&scope, error).into_value()
-    );
-}
+    loop {
+        match stack.unwind() {
+            UnwindResult::Callable(callable) => {
+                stack_trace.push(
+                    callable
+                        .name()
+                        .map(|name| new_string(&scope, name))
+                        .unwrap_or_else(|| new_string(&scope, "anonymous"))
+                        .into_value(),
+                );
+            }
+            UnwindResult::Caught(handler) => {
+                let mut args = new_vector(&scope);
 
-#[inline]
-fn eval_catch(stack: &mut Stack) {
-    let error = stack.value.pop_front();
-    panic!("{:?}", error);
+                args.push(error.into_value());
+
+                stack.state.push_front(EvalState::Call);
+                stack.value.push_front(args.into_value());
+                stack.state.push_front(EvalState::Eval);
+                stack.value.push_front(handler);
+                break;
+            }
+            UnwindResult::Uncaught => {
+                panic!("Uncaught Error: {:?}", error.into_value());
+            }
+        }
+    }
 }
 
 #[inline]

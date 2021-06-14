@@ -35,7 +35,7 @@ pub fn new_context() -> Gc<Object<Scope>> {
         init_bool_scope(&scope);
         Stack::init_scope(&scope);
         Atom::init_scope(&scope);
-        Value::init_scope(&scope);
+        <dyn Value>::init_scope(&scope);
         Kind::init_scope(&scope);
         GcAllocator::init_scope(&scope);
         SpecialForm::init_scope(&scope);
@@ -64,7 +64,7 @@ fn global_error_handler(scope: &Gc<Object<Scope>>, args: &Gc<Object<Vector>>) ->
         .map(Clone::clone)
         .unwrap_or_else(|| nil_value(scope).clone().into_value());
 
-    panic!("{:?}", error)
+    panic!("{:#?}", error)
 }
 
 #[inline]

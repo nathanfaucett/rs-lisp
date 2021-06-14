@@ -399,8 +399,29 @@ pub fn throw_special_form(stack: &mut Stack) {
 }
 
 #[inline]
-pub fn try_special_form(_stack: &mut Stack) {
-    // TODO handle run block, push catch to stack
+pub fn try_special_form(stack: &mut Stack) {
+    let mut args_value = stack
+        .value
+        .pop_front()
+        .expect("failed to get arguments for quote");
+    let args = args_value
+        .downcast_mut::<Object<Vector>>()
+        .expect("failed to downcast quote arguments to Vector");
+    let block = args.get(0).map(Clone::clone).unwrap_or_else(|| {
+        nil_value(stack.scope.front().expect("failed to get scope"))
+            .clone()
+            .into_value()
+    });
+    let handler = args.get(1).map(Clone::clone).unwrap_or_else(|| {
+        nil_value(stack.scope.front().expect("failed to get scope"))
+            .clone()
+            .into_value()
+    });
+
+    stack.state.push_front(EvalState::Catch);
+    stack.value.push_front(handler);
+    stack.state.push_front(EvalState::Eval);
+    stack.value.push_front(block);
 }
 
 #[inline]

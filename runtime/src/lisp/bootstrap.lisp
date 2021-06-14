@@ -19,3 +19,7 @@
 (def-fn for-each [array, func] 
   (for-each-recur 0_usize, (vector.len array), array, func)
 )
+
+(def-fn atom.update [atom, func]
+  (atom.set atom (func (atom.get atom)))
+)
