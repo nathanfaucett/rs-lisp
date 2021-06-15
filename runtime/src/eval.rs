@@ -6,7 +6,7 @@ use gc::Gc;
 
 use super::{
     escape_kind, expand_special_form, function_kind, get_stack, list_kind, macro_kind, map_kind,
-    new_keyword, new_list, new_list_from, new_map, new_scope, new_string, new_vector,
+    new_keyword, new_list, new_list_from, new_map, new_scope, new_string, new_usize, new_vector,
     new_vector_from, nil_value, read_value, scope_get, scope_set, special_form_kind, symbol_kind,
     vector_kind, Escape, EvalState, Function, FunctionKind, List, Map, Object, Reader, Scope,
     SpecialForm, Stack, Symbol, UnwindResult, Value, Vector,
@@ -500,11 +500,37 @@ fn eval_throw(stack: &mut Stack) {
         match stack.unwind() {
             UnwindResult::Callable(callable) => {
                 stack_trace.push(
-                    callable
-                        .name()
-                        .map(|name| new_string(&scope, name))
-                        .unwrap_or_else(|| new_string(&scope, "anonymous"))
-                        .into_value(),
+                    new_string(
+                        &scope,
+                        format!(
+                            "{}, {}",
+                            callable
+                                .name()
+                                .map(|name| new_string(&scope, name))
+                                .unwrap_or_else(|| new_string(&scope, "anonymous")),
+                            callable
+                                .meta()
+                                .map(|meta| {
+                                    format!(
+                                        "{} {:?}:{:?}",
+                                        meta.get(&new_keyword(&scope, "filename").into_value())
+                                            .and_then(|filename| filename
+                                                .downcast_ref::<Object<String>>()
+                                                .map(|object| object.value())
+                                                .map(Clone::clone))
+                                            .unwrap_or_else(String::new),
+                                        meta.get(&new_keyword(&scope, "line").into_value())
+                                            .map(Clone::clone)
+                                            .unwrap_or_else(|| new_usize(&scope, 1).into_value()),
+                                        meta.get(&new_keyword(&scope, "col").into_value())
+                                            .map(Clone::clone)
+                                            .unwrap_or_else(|| new_usize(&scope, 1).into_value())
+                                    )
+                                })
+                                .unwrap_or_else(String::new)
+                        ),
+                    )
+                    .into_value(),
                 );
             }
             UnwindResult::Caught(handler) => {

@@ -15,8 +15,9 @@ pub trait Value: Any {
     fn debug(&self, f: &mut fmt::Formatter) -> fmt::Result;
     fn compare(&self, other: &dyn Value) -> Option<Ordering>;
     fn hash(&self, hasher: &mut dyn Hasher);
-    fn trace(&mut self, marked: bool);
     fn is_marked(&self) -> bool;
+    fn trace(&mut self, marked: bool);
+    fn mark(&mut self, marked: bool);
 }
 
 impl dyn Value {

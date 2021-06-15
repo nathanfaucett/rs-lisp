@@ -117,13 +117,18 @@ where
     }
 
     #[inline(always)]
+    fn is_marked(&self) -> bool {
+        Trace::is_marked(self)
+    }
+
+    #[inline(always)]
     fn trace(&mut self, marked: bool) {
         Trace::trace(self, marked);
     }
 
     #[inline(always)]
-    fn is_marked(&self) -> bool {
-        Trace::is_marked(self)
+    fn mark(&mut self, marked: bool) {
+        self.marked = marked;
     }
 }
 

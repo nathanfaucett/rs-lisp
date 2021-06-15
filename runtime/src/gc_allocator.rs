@@ -3,7 +3,9 @@ use alloc::vec::Vec;
 
 use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
-use core::ptr;
+use core::{cmp, ptr};
+
+use parking_lot::Mutex;
 
 use gc::Gc;
 
@@ -13,11 +15,37 @@ use super::{
     add_external_macro, new_usize, scope_get_with_kind, Kind, Object, Scope, Value, Vector,
 };
 
-#[derive(Clone, PartialEq, PartialOrd, Eq)]
 pub struct GcAllocator {
     size: usize,
     max_size: usize,
-    values: Vec<Gc<dyn Value>>,
+    values: Mutex<Vec<Gc<dyn Value>>>,
+}
+
+impl Eq for GcAllocator {}
+
+impl PartialEq for GcAllocator {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        ptr::eq(self, other)
+    }
+}
+
+impl PartialOrd for GcAllocator {
+    #[inline]
+    fn partial_cmp(&self, _other: &Self) -> Option<cmp::Ordering> {
+        None
+    }
+}
+
+impl Clone for GcAllocator {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            size: self.size,
+            max_size: self.max_size,
+            values: Mutex::new(self.values.lock().clone()),
+        }
+    }
 }
 
 impl fmt::Debug for GcAllocator {
@@ -40,7 +68,7 @@ impl Hash for GcAllocator {
 impl Drop for GcAllocator {
     #[inline]
     fn drop(&mut self) {
-        for v in self.values.drain(..) {
+        for v in self.values.lock().drain(..) {
             unsafe {
                 v.unsafe_drop();
             }
@@ -56,7 +84,7 @@ impl GcAllocator {
         GcAllocator {
             size: 0,
             max_size: 1024 * 1024,
-            values: Vec::new(),
+            values: Mutex::default(),
         }
     }
 
@@ -78,7 +106,7 @@ impl GcAllocator {
     #[inline]
     pub unsafe fn unsafe_maintain_value(&mut self, value: Gc<dyn Value>) -> &mut Self {
         self.size += value.kind().size();
-        self.values.push(value);
+        self.values.lock().push(value);
         self
     }
 
@@ -147,17 +175,21 @@ impl GcAllocator {
 
         let mut size = 0;
         let mut removed = LinkedList::new();
+        {
+            let mut values = self.values.lock();
+            values.retain(|v| {
+                let marked = v.is_marked();
+                if !marked {
+                    size += v.kind().size();
+                    removed.push_front(v.clone());
+                }
+                marked
+            });
 
-        self.values.retain(|v| {
-            let marked = v.is_marked();
-            if !marked {
-                size += v.kind().size();
-                removed.push_front(v.clone());
+            for value in values.iter_mut() {
+                value.mark(false);
             }
-            marked
-        });
-
-        scope.trace(false);
+        }
 
         for v in removed.into_iter() {
             unsafe {

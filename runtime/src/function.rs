@@ -8,7 +8,7 @@ use gc::{Gc, Trace};
 
 use super::{
     eval, new_kind, new_list_from, new_object, new_symbol, new_vector_from, scope_get_with_kind,
-    scope_set, FunctionKind, Kind, List, Object, Scope, Symbol, Value, Vector,
+    scope_set, FunctionKind, Kind, List, Map, Object, Scope, Symbol, Value, Vector,
 };
 
 #[derive(Eq)]
@@ -136,12 +136,14 @@ pub fn new_function(
     name: Option<Gc<Object<Symbol>>>,
     params: Gc<Object<Vector>>,
     body: Gc<dyn Value>,
+    meta: Option<Gc<Object<Map>>>,
 ) -> Gc<Object<Function>> {
     new_object(
         scope,
-        Object::new(
+        Object::new_with_meta(
             function_kind(scope).clone(),
             Function::new(name, scope.clone(), params, body),
+            meta,
         ),
     )
 }

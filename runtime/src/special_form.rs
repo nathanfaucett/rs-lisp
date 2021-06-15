@@ -242,10 +242,11 @@ fn build_function(
 #[inline]
 pub fn fn_special_form(stack: &mut Stack) {
     let (name, params, body) = build_function(stack);
+    let meta = body.meta();
 
-    stack
-        .value
-        .push_front(new_function(stack.scope.front().unwrap(), name, params, body).into_value());
+    stack.value.push_front(
+        new_function(stack.scope.front().unwrap(), name, params, body, meta).into_value(),
+    );
 }
 
 #[inline]

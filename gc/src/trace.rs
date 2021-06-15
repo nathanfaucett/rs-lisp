@@ -7,6 +7,9 @@ pub trait Trace {
     }
     #[inline(always)]
     fn trace(&mut self, _marked: bool) {}
+
+    #[inline(always)]
+    fn mark(&mut self, _marked: bool) {}
 }
 
 impl Trace for () {}
@@ -50,6 +53,13 @@ where
             None => {}
         }
     }
+    #[inline(always)]
+    fn mark(&mut self, marked: bool) {
+        match self.as_mut() {
+            Some(value) => value.mark(marked),
+            None => {}
+        }
+    }
 }
 
 impl<T, E> Trace for Result<T, E>
@@ -69,6 +79,13 @@ where
         match self.as_mut() {
             Ok(ok) => ok.trace(marked),
             Err(err) => err.trace(marked),
+        }
+    }
+    #[inline(always)]
+    fn mark(&mut self, marked: bool) {
+        match self.as_mut() {
+            Ok(ok) => ok.mark(marked),
+            Err(err) => err.mark(marked),
         }
     }
 }
