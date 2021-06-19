@@ -3,7 +3,6 @@
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
 
-#[macro_use]
 extern crate core;
 
 #[macro_use]

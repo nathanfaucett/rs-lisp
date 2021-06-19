@@ -1,5 +1,7 @@
-use alloc::string::ToString;
-use alloc::vec::Vec;
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use core::ops::Deref;
 
 use gc::Gc;
@@ -7,9 +9,9 @@ use gc::Gc;
 use super::{
     escape_kind, expand_special_form, function_kind, get_stack, list_kind, macro_kind, map_kind,
     new_keyword, new_list, new_list_from, new_map, new_scope, new_string, new_usize, new_vector,
-    new_vector_from, nil_value, read_value, scope_get, scope_set, special_form_kind, symbol_kind,
-    vector_kind, Escape, EvalState, Function, FunctionKind, List, Map, Object, Reader, Scope,
-    SpecialForm, Stack, Symbol, UnwindResult, Value, Vector,
+    new_vector_from, nil_value, read_value, scope_get, scope_get_with_kind, scope_set,
+    special_form_kind, symbol_kind, vector_kind, Escape, EvalState, Function, FunctionKind, List,
+    Map, Object, Reader, Scope, SpecialForm, Stack, Symbol, UnwindResult, Value, Vector,
 };
 
 #[inline]
@@ -18,7 +20,10 @@ where
     T: ToString,
 {
     let char_list = string.to_string().chars().collect::<Vec<char>>();
-    let mut reader = Reader::new(None, char_list);
+    let mut reader = Reader::new(
+        scope_get_with_kind::<String>(&scope, "__filename").map(|obj| obj.value().clone()),
+        char_list,
+    );
     read_value(scope, &mut reader)
 }
 
