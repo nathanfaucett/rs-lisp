@@ -1,0 +1,17 @@
+[package]
+name = "lisp-hello-world"
+version = "0.1.0"
+authors = ["Nathan Faucett <nathanfaucett@gmail.com>"]
+
+description = "lisp hello world"
+license = "MIT/Apache-2.0"
+
+[lib]
+name = "lisp_hello_world"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+lisp = { version = "0.1", path = "../../" }
+
+[dev-dependencies]

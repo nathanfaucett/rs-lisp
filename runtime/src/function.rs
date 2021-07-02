@@ -259,7 +259,7 @@ pub fn call_function(
     scope: &Gc<Object<Scope>>,
     callable: Gc<Object<Function>>,
     arguments: Gc<Object<Vector>>,
-) -> (Gc<Object<Scope>>, Gc<dyn Value>) {
+) -> Gc<dyn Value> {
     let mut list = arguments.value().iter().collect::<List>();
     list.push_front(callable.into_value());
     eval(scope, new_list_from(&scope, list).into_value())

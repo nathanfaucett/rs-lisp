@@ -28,7 +28,7 @@ where
 }
 
 #[inline]
-pub fn run<T>(scope: &Gc<Object<Scope>>, string: T) -> (Gc<Object<Scope>>, Gc<dyn Value>)
+pub fn run<T>(scope: &Gc<Object<Scope>>, string: T) -> Gc<dyn Value>
 where
     T: ToString,
 {
@@ -36,7 +36,7 @@ where
 }
 
 #[inline]
-pub fn eval(scope: &Gc<Object<Scope>>, value: Gc<dyn Value>) -> (Gc<Object<Scope>>, Gc<dyn Value>) {
+pub fn eval(scope: &Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
     let mut stack = get_stack(scope).clone();
 
     stack.push_scope_and_value(scope.clone(), value);
@@ -68,7 +68,7 @@ pub fn eval(scope: &Gc<Object<Scope>>, value: Gc<dyn Value>) -> (Gc<Object<Scope
 }
 
 #[inline]
-fn eval_raw(scope: &Gc<Object<Scope>>, value: Gc<dyn Value>) -> (Gc<Object<Scope>>, Gc<dyn Value>) {
+fn eval_raw(scope: &Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
     let mut stack = get_stack(scope).clone();
 
     stack.push_scope_and_value(scope.clone(), value);
@@ -663,7 +663,7 @@ fn eval_expand(stack: &mut Stack) {
 }
 
 #[inline]
-pub fn run_in_scope<T>(scope: &Gc<Object<Scope>>, content: T) -> (Gc<Object<Scope>>, Gc<dyn Value>)
+pub fn run_in_scope<T>(scope: &Gc<Object<Scope>>, content: T) -> Gc<dyn Value>
 where
     T: ToString,
 {

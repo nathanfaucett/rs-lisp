@@ -1,28 +1,35 @@
-#[macro_use]
 extern crate clap;
 extern crate lisp;
 
-use std::fs::canonicalize;
+use clap::{App, Arg};
+use std::{fs::canonicalize, io};
 
 const NAME: &'static str = env!("CARGO_PKG_NAME");
 const DESCRIPTION: &'static str = env!("CARGO_PKG_DESCRIPTION");
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
-fn main() {
-    let matches = clap_app!(app =>
-        (name: NAME)
-        (version: VERSION)
-        (author: AUTHORS)
-        (about: DESCRIPTION)
-        (@arg INPUT: +required "Sets the input file to use")
-    )
-    .get_matches();
+fn main() -> io::Result<()> {
+    let matches = App::new(NAME)
+        .version(VERSION)
+        .author(AUTHORS)
+        .about(DESCRIPTION)
+        .arg(
+            Arg::new("input")
+                .alias("input")
+                .index(1)
+                .required(false)
+                .about("Sets the input file to use"),
+        )
+        .get_matches();
 
     let scope = lisp::new();
-    lisp::run_path(
-        &scope,
-        &canonicalize(matches.value_of("INPUT").expect("No input file given"))
-            .expect("Failed to canonicalize input file"),
-    );
+    if let Some(input_file) = matches.value_of("input") {
+        lisp::run_path(
+            &scope,
+            &canonicalize(input_file).expect("Failed to canonicalize input file"),
+        )
+    } else {
+        lisp::repl(&scope)
+    }
 }

@@ -1,9 +1,11 @@
-(def throw_error (fn throw_error []
+(def-fn throw_error []
   (throw "Throw me!")
-))
+)
+
+(def-fn call-me [] (throw_error))
 
 (try 
-  (throw_error)
+  (call-me)
   (fn [error]
     (println error)
   )

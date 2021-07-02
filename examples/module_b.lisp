@@ -1,6 +1,6 @@
-(def hello_b (fn hello []
+(def-fn hello_b []
   (println "Hello, from " __filename)
-))
+)
 
 (export hello_b)
 

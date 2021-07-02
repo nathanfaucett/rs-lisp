@@ -41,7 +41,7 @@ pub fn dylib_loader(
             .expect("parent dirname is nil");
         let parent_dirname = parent_dirname_value
             .downcast_ref::<Object<String>>()
-            .expect("Failed to downcast dirname to String");
+            .expect("failed to downcast dirname to String");
         let filename_path = Path::new(filename);
         let parent_dirname_path = Path::new(parent_dirname.value());
         let path = canonicalize(parent_dirname_path.join(filename_path))

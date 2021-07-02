@@ -1,4 +1,4 @@
-(def test (fn [x] (if x true false)))
+(def-fn test [x] (if x true false))
 
 (def a (test true))
 (def b (test (bool.not true)))

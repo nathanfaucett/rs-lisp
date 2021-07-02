@@ -31,7 +31,7 @@ pub fn load(
         loader_args.push(parent_module.clone().into_value());
         loader_args.push(filename.clone().into_value());
 
-        let (_new_scope, result_value) = call_function(scope, loader.clone(), loader_args);
+        let result_value = call_function(scope, loader.clone(), loader_args);
         let result = result_value.downcast_ref::<Object<Map>>();
 
         if result.is_some() {

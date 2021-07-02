@@ -123,10 +123,9 @@ impl Stack {
     }
 
     #[inline]
-    pub(crate) fn pop_scope_and_value(&mut self) -> Option<(Gc<Object<Scope>>, Gc<dyn Value>)> {
-        self.scope
-            .pop_front()
-            .and_then(|scope| self.value.pop_front().map(|value| (scope, value)))
+    pub(crate) fn pop_scope_and_value(&mut self) -> Option<Gc<dyn Value>> {
+        self.scope.pop_front();
+        self.value.pop_front()
     }
 
     #[inline]

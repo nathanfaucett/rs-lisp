@@ -1,41 +1,28 @@
 [package]
-name = "lisp"
+name = "lisp-builder"
 version = "0.1.0"
 authors = ["Nathan Faucett <nathanfaucett@gmail.com>"]
 
-keywords = ["lisp"]
+keywords = ["lisp", "builder"]
 categories = []
 
-description = "a lisp"
+description = "lisp builder"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/nathanfaucett/rs-lisp.git"
 homepage = "https://github.com/nathanfaucett/rs-lisp"
 
 [lib]
-name = "lisp"
+name = "lisp_builder"
 path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [[bin]]
-name = "lisp"
+name = "lisp-builder"
 path = "src/main.rs"
 
 [dependencies]
-rustyline = "8.2"
-libloading = "0.7"
+cargo = "0.54"
 clap = { version = "3.0.0-beta.2" }
-lisp-gc = { version = "0.1", path = "./gc" }
-lisp-runtime = { version = "0.1", path = "./runtime" }
 
 [dev-dependencies]
-
-[workspace]
-members = [
-  "examples/hello_world",
-  "builder",
-  "gc",
-  "runtime"
-]
-exclude = [
-  "packages"
-]
