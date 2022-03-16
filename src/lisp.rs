@@ -69,7 +69,6 @@ pub fn repl(scope: &Gc<Object<Scope>>) -> io::Result<()> {
             }
             Err(err) => {
                 println!("Error: {:?}", err);
-                break;
             }
         }
     }

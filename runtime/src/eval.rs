@@ -45,15 +45,15 @@ pub fn eval(scope: &Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
         match stack.state.pop_front() {
             Some(state) => match state {
                 EvalState::Eval => eval_eval_evaluated(&mut stack),
-                EvalState::EvalVec => panic!("invalid state EvalVec"),
-                EvalState::EvalMap => panic!("invalid state EvalMap"),
-                EvalState::EvalMapKeyValue => panic!("invalid state EvalMapKeyValue"),
+                EvalState::EvalVec => panic!("Invalid state EvalVec"),
+                EvalState::EvalMap => panic!("Invalid state EvalMap"),
+                EvalState::EvalMapKeyValue => panic!("Invalid state EvalMapKeyValue"),
                 EvalState::Call => eval_call_evaluated(&mut stack),
                 EvalState::CallFunction => eval_call_function(&mut stack),
                 EvalState::PopValue => eval_pop_value(&mut stack),
                 EvalState::PopScope => eval_pop_scope(&mut stack),
                 EvalState::Throw => eval_throw(&mut stack),
-                EvalState::Catch => panic!("invalid state Catch"),
+                EvalState::Catch => panic!("Invalid state Catch"),
                 EvalState::If => eval_if(&mut stack),
                 EvalState::Def => eval_def(&mut stack),
                 EvalState::Expand => eval_expand(&mut stack),
@@ -85,7 +85,7 @@ fn eval_raw(scope: &Gc<Object<Scope>>, value: Gc<dyn Value>) -> Gc<dyn Value> {
                 EvalState::PopValue => eval_pop_value(&mut stack),
                 EvalState::PopScope => eval_pop_scope(&mut stack),
                 EvalState::Throw => eval_throw(&mut stack),
-                EvalState::Catch => panic!("invalid state Catch"),
+                EvalState::Catch => panic!("Invalid state Catch"),
                 EvalState::If => eval_if(&mut stack),
                 EvalState::Def => eval_def(&mut stack),
                 EvalState::Expand => eval_expand(&mut stack),
@@ -367,7 +367,12 @@ fn eval_call(stack: &mut Stack) {
         stack.value.push_front(arguments.clone().into_value());
         (special_form.value().deref())(stack);
     } else {
-        panic!("Failed to call non-callable value {:?}", callable);
+        let error = new_string(
+            scope,
+            format!("Failed to call non-callable value {:?}", callable),
+        )
+        .into_value();
+        stack.throw_error(error);
     }
 }
 
@@ -407,7 +412,12 @@ fn eval_call_evaluated(stack: &mut Stack) {
         stack.value.push_front(arguments.into_value());
         (special_form.value().deref())(stack);
     } else {
-        panic!("Failed to call non-callable value {:?}", callable);
+        let error = new_string(
+            scope,
+            format!("Failed to call non-callable value {:?}", callable),
+        )
+        .into_value();
+        stack.throw_error(error);
     }
 }
 

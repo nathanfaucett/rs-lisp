@@ -1,7 +1,7 @@
 extern crate clap;
 extern crate lisp_builder;
 
-use clap::{App, Arg};
+use clap::{Arg, Command};
 use std::fs;
 
 const NAME: &'static str = env!("CARGO_PKG_NAME");
@@ -10,7 +10,7 @@ const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 fn main() {
-    let matches = App::new(NAME)
+    let matches = Command::new(NAME)
         .version(VERSION)
         .author(AUTHORS)
         .about(DESCRIPTION)
@@ -19,14 +19,14 @@ fn main() {
                 .short('i')
                 .long("input")
                 .default_value("./Cargo.toml")
-                .about("Sets the input Cargo.toml to use"),
+                .help("Sets the input Cargo.toml to use"),
         )
         .arg(
             Arg::new("dest")
                 .short('d')
                 .long("dest")
                 .default_value("./lisp-builder-out")
-                .about("Sets the output path to use"),
+                .help("Sets the output path to use"),
         )
         .get_matches();
 

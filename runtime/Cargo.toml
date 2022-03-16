@@ -20,8 +20,8 @@ path = "src/lib.rs"
 num-traits = "0.2"
 serde = "1.0"
 serde_derive = "1.0"
-hashbrown = "0.9"
-parking_lot = "0.11"
+hashbrown = "0.12"
+parking_lot = "0.12"
 lisp-gc = { version = "0.1", path = "../gc" }
 
 [dev-dependencies]

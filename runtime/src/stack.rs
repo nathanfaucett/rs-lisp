@@ -141,6 +141,13 @@ impl Stack {
     }
 
     #[inline]
+    pub(crate) fn throw_error(&mut self, value: Gc<dyn Value>) -> &mut Self {
+        self.value.push_front(value);
+        self.state.push_front(EvalState::Throw);
+        self
+    }
+
+    #[inline]
     pub(crate) fn init_kind(scope: &Gc<Object<Scope>>) {
         let stack_kind = new_kind::<Stack>(scope, "Stack");
         scope_set(scope, "Stack", stack_kind.into_value());

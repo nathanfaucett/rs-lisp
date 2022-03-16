@@ -1,7 +1,7 @@
 extern crate clap;
 extern crate lisp;
 
-use clap::{App, Arg};
+use clap::{Arg, Command};
 use std::{fs::canonicalize, io};
 
 const NAME: &'static str = env!("CARGO_PKG_NAME");
@@ -10,7 +10,7 @@ const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 fn main() -> io::Result<()> {
-    let matches = App::new(NAME)
+    let matches = Command::new(NAME)
         .version(VERSION)
         .author(AUTHORS)
         .about(DESCRIPTION)
@@ -19,7 +19,7 @@ fn main() -> io::Result<()> {
                 .alias("input")
                 .index(1)
                 .required(false)
-                .about("Sets the input file to use"),
+                .help("Sets the input file to use"),
         )
         .get_matches();
 
