@@ -1,15 +1,15 @@
 use alloc::string::String;
 
 pub trait Trace {
-    #[inline(always)]
-    fn is_marked(&self) -> bool {
-        true
-    }
-    #[inline(always)]
-    fn trace(&mut self, _marked: bool) {}
+  #[inline(always)]
+  fn is_marked(&self) -> bool {
+    true
+  }
+  #[inline(always)]
+  fn trace(&mut self, _marked: bool) {}
 
-    #[inline(always)]
-    fn mark(&mut self, _marked: bool) {}
+  #[inline(always)]
+  fn mark(&mut self, _marked: bool) {}
 }
 
 impl Trace for () {}
@@ -37,55 +37,55 @@ impl Trace for f64 {}
 
 impl<T> Trace for Option<T>
 where
-    T: Trace,
+  T: Trace,
 {
-    #[inline(always)]
-    fn is_marked(&self) -> bool {
-        match self.as_ref() {
-            Some(value) => value.is_marked(),
-            None => true,
-        }
+  #[inline(always)]
+  fn is_marked(&self) -> bool {
+    match self.as_ref() {
+      Some(value) => value.is_marked(),
+      None => true,
     }
-    #[inline(always)]
-    fn trace(&mut self, marked: bool) {
-        match self.as_mut() {
-            Some(value) => value.trace(marked),
-            None => {}
-        }
+  }
+  #[inline(always)]
+  fn trace(&mut self, marked: bool) {
+    match self.as_mut() {
+      Some(value) => value.trace(marked),
+      None => {}
     }
-    #[inline(always)]
-    fn mark(&mut self, marked: bool) {
-        match self.as_mut() {
-            Some(value) => value.mark(marked),
-            None => {}
-        }
+  }
+  #[inline(always)]
+  fn mark(&mut self, marked: bool) {
+    match self.as_mut() {
+      Some(value) => value.mark(marked),
+      None => {}
     }
+  }
 }
 
 impl<T, E> Trace for Result<T, E>
 where
-    T: Trace,
-    E: Trace,
+  T: Trace,
+  E: Trace,
 {
-    #[inline(always)]
-    fn is_marked(&self) -> bool {
-        match self.as_ref() {
-            Ok(ok) => ok.is_marked(),
-            Err(err) => err.is_marked(),
-        }
+  #[inline(always)]
+  fn is_marked(&self) -> bool {
+    match self.as_ref() {
+      Ok(ok) => ok.is_marked(),
+      Err(err) => err.is_marked(),
     }
-    #[inline(always)]
-    fn trace(&mut self, marked: bool) {
-        match self.as_mut() {
-            Ok(ok) => ok.trace(marked),
-            Err(err) => err.trace(marked),
-        }
+  }
+  #[inline(always)]
+  fn trace(&mut self, marked: bool) {
+    match self.as_mut() {
+      Ok(ok) => ok.trace(marked),
+      Err(err) => err.trace(marked),
     }
-    #[inline(always)]
-    fn mark(&mut self, marked: bool) {
-        match self.as_mut() {
-            Ok(ok) => ok.mark(marked),
-            Err(err) => err.mark(marked),
-        }
+  }
+  #[inline(always)]
+  fn mark(&mut self, marked: bool) {
+    match self.as_mut() {
+      Ok(ok) => ok.mark(marked),
+      Err(err) => err.mark(marked),
     }
+  }
 }
