@@ -1,3 +1,4 @@
+#![feature(box_into_inner)]
 #![no_std]
 
 extern crate alloc;
